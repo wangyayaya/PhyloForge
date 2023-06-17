@@ -4,4 +4,4 @@
 from script import mode
 
 if __name__ == '__main__':
-    mode.MODE().mode0()
+    mode.run()

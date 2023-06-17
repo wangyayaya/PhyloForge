@@ -9,6 +9,7 @@
 import sys
 
 from script import script, hmm2OG
+
 cmd = script.RunCmd()
 
 
@@ -25,7 +26,7 @@ class MODE:
         cmd.mkdir()
         cmd.run_format_and_trans()
         statuss = cmd.run_hmmscan_pl()
-        #statuss = [0]
+        # statuss = [0]
         if 1 in statuss:
             print("The hmmsearch program failed to run")
             sys.exit(1)
@@ -57,7 +58,10 @@ class MODE:
         cmd.run_genetree_mul()
         cmd.run_astral()
 
-
     def mode4(self):
         """重新选择做树软件"""
         pass
+
+
+def run():
+    pass
