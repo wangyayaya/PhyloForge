@@ -1,0 +1,2 @@
+[console_scripts]
+est = est.run:main

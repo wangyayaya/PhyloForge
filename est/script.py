@@ -9,7 +9,7 @@ from configparser import ConfigParser
 from collections import OrderedDict
 from Bio import SeqIO
 
-import script.get_parser as get_parser
+import get_parser as get_parser
 
 opt_cfg = get_parser.get_parser()
 

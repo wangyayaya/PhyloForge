@@ -8,7 +8,7 @@
 """
 import sys
 
-from script import script, hmm2OG
+from est import script, hmm2OG
 
 cmd = script.RunCmd()
 

@@ -1,0 +1,17 @@
+README.md
+setup.py
+est/__init__.py
+est/get_parser.py
+est/hmm2OG.py
+est/mode.py
+est/orthofinder_select.py
+est/run.config
+est/run.py
+est/script.py
+est.egg-info/PKG-INFO
+est.egg-info/SOURCES.txt
+est.egg-info/dependency_links.txt
+est.egg-info/entry_points.txt
+est.egg-info/requires.txt
+est.egg-info/top_level.txt
+est.egg-info/zip-safe
