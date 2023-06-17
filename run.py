@@ -5,3 +5,4 @@ from script import mode
 
 if __name__ == '__main__':
     mode.run()
+    print('hhhhhh')
