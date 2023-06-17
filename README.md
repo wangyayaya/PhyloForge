@@ -8,7 +8,7 @@
 
 2）与做物种树的物种对应的BUSCO单拷贝数据库，该文件可以按如下步骤获取：
 
-1，访问BUSCO数据库：[Index of /v5/data/lineages/ (ezlab.org)](https://busco-data.ezlab.org/v5/data/lineages/)或者https://busco-archive.ezlab.org/v3/下载与物种对应的数据库，例如被子植物一般下载有胚植物（Embryophyta odb10）单拷贝基因数据集：
+1，访问BUSCO数据库：[Index of /v5/data/lineages/ (ezlab.org)](https://busco-data.ezlab.org/v5/data/lineages/)或者https://busco-archive.ezlab.org/v3/ 下载与物种对应的数据库，例如被子植物一般下载有胚植物（Embryophyta odb10）单拷贝基因数据集：
 
 ```shell
 $ wget -c https://busco-archive.ezlab.org/v3/datasets/prerelease/embryophyta_odb10.tar.gz -O embryophyta_odb10.tar.gz
