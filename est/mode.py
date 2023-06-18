@@ -30,11 +30,8 @@ class MODE:
             sys.exit(1)
         else:
             hmm2OG.HMM_OG().run_hmm2OG()
-            statuss_aln, statuss_trim, statuss_built_tree = cmd.run_genetree_mul()
-            if any([status == 1 for status in statuss_aln + statuss_trim + statuss_built_tree]):
-                print("hhh")
-            else:
-                cmd.run_astral()
+            cmd.run_genetree_mul()
+            cmd.run_astral()
 
     def mode1(self):
         """从头运行至筛选OG,cds to SOG/LOG"""
