@@ -155,6 +155,8 @@ class RunCmd():
 
     def run_hmmscan_pl(self):
         """多进程运行hmmscan"""
+        self.mkdir()
+        self.format_and_trans()
         infile_list = self.get_infile_list(self.out_path + '/02_pep')
         # print(infile_list)
         p = multiprocessing.Pool(int(self.thread))

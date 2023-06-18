@@ -23,10 +23,8 @@ class MODE:
 
     def mode0(self):
         """从头开始运行全流程cds to species tree"""
-        cmd.mkdir()
-        cmd.run_format_and_trans()
-        statuss = cmd.run_hmmscan_pl()
-        # statuss = [0]
+        # statuss = cmd.run_hmmscan_pl()
+        statuss = [0]
         if 1 in statuss:
             print("The hmmsearch program failed to run")
             sys.exit(1)
