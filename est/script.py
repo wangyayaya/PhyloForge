@@ -31,7 +31,8 @@ class RunCmd():
             # print(str(k), v)
         if int(self.thread) <= 1:
             self.thread = 2
-        # self.check_software() #运行时先检查软件是否可用
+
+        self.check_software() #运行时先检查软件是否可用
 
     def get_config(self):
         cfg_parser = ConfigParser()
