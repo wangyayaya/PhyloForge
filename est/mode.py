@@ -8,23 +8,24 @@
 """
 import sys
 
-from est import script, hmm2OG
+import script, hmm2OG
 
 cmd = script.RunCmd()
 
 
 class MODE:
-    def __int__(self):
+    def __init__(self):
         self.seq = 0
         self.coa_con = 0
+        self.mode = 0
         opt = hmm2OG.HMM_OG().get_config()
         for k, v in opt.items():
             setattr(self, str(k), v)
 
-    def mode0(self):
-        """从头开始运行全流程cds to species tree"""
-        # statuss = cmd.run_hmmscan_pl()
-        statuss = [0]
+    def run_mode0(self):
+        """cds to species tree"""
+        statuss= cmd.run_hmmscan_pl()
+        # statuss = [0]
         if 1 in statuss:
             print("The hmmsearch program failed to run")
             sys.exit(1)
@@ -32,11 +33,11 @@ class MODE:
             hmm2OG.HMM_OG().run_hmm2OG()
             cmd.run_genetree_mul()
             cmd.run_astral()
+            if self.coa_con == 1:
+                cmd.run_contree()
 
-    def mode1(self):
-        """从头运行至筛选OG,cds to SOG/LOG"""
-        cmd.mkdir()
-        cmd.run_format_and_trans()
+    def run_mode1(self):
+        """cds to SOG/LOG"""
         statuss = cmd.run_hmmscan_pl()
         if 1 in statuss:
             print("The hmmsearch program failed to run")
@@ -44,19 +45,39 @@ class MODE:
         else:
             hmm2OG.HMM_OG().run_hmm2OG()
 
-    def mode2(self):
-        """只运行筛选OG这一步骤"""
+    def run_mode2(self):
+        """select OG"""
         hmm2OG.HMM_OG().run_hmm2OG()
 
-    def mode3(self):
-        """筛选出适当的OG数目后，跑完后续全部流程"""
+    def run_mode3(self):
+        """OG to tree"""
         cmd.run_genetree_mul()
         cmd.run_astral()
+        if int(self.coa_con) == 1:
+            cmd.run_contree()
 
-    def mode4(self):
+    def run_mode4(self):
         """重新选择做树软件"""
         pass
 
+    def run(self):
+        try:
+            n = int(self.mode)
+            if n == 0:
+                run = self.run_mode0()
+            elif n ==1:
+                run = self.run_mode1()
+            elif n ==2:
+                run = self.run_mode2()
+            elif n ==3:
+                run = self.run_mode3()
+            elif n == 4:
+                run =self.run_mode4()
+            else:
+                print("please check")
 
-def run():
-    pass
+        except ValueError:
+            print("please check type of mode (int)")
+            sys.exit()
+
+        return run

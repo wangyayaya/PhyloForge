@@ -1,7 +1,12 @@
 #!/usr/bin/env python
 # -*- coding:utf-8 -*-
 
-import est.mode as mode
+import mode as mode
+
+
+def main():
+    mode.MODE().run()
+
 
 if __name__ == '__main__':
-    mode.MODE().mode0()
+    main()

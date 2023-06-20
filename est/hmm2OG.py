@@ -4,7 +4,8 @@ import multiprocessing
 
 from configparser import ConfigParser
 
-import script.get_parser as get_parser
+import get_parser as get_parser
+import script as sccript
 
 opt_cfg = get_parser.get_parser()
 
@@ -15,8 +16,14 @@ class HMM_OG:
         opt = self.get_config()
         for k, v in opt.items():
             setattr(self, str(k), v)
+
         self.in_path = f'{self.out_path}/03_hmm_out'
         self.out_path = f'{self.out_path}/04_OG'
+
+        try:
+            self.cover
+        except AttributeError:
+            self.cover = len(self.get_file_paths())
 
     def get_config(self):
         cfg_parser = ConfigParser()

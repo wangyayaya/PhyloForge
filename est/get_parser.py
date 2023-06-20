@@ -6,18 +6,18 @@ import sys
 def get_parser():
     parser = argparse.ArgumentParser(description=f"To get started: {__file__} -c run.config")
     parser.add_argument("-c", "--config", type=str, help=f"Run main program, You can obtain configfile by running: "
-                                                         f"{__file__} -g >run.cfg, or refer to this file: "
-                                                         f"{os.path.splitext(os.path.split(__file__)[0])[0]}/run.config")
+                                                         f"{__file__} -g >run.cfg, or refer README.md")
     parser.add_argument("-g", "--getcfg", action="store_true", help="Get the config file")
+    parser.add_argument("-v", "--version", action="version", version="est 测试版")
     args = parser.parse_args()
     if args.getcfg:
         print("""
 [opt]
 in_path = /path/to/cds_dir/
 out_path = /path/to/output/
-thread = 1
+thread = 10
 orthodb = /path/to/buscoDB
-aln_software = muscle
+aln_software = mafft
 tree_software = iqtree
 cover = 7
 copy_number = 1
