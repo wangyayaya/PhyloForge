@@ -1,18 +1,17 @@
 import os
-import sys
 import subprocess
 import multiprocessing
 import re
-import time
 import shutil
+import sys
 
 from configparser import ConfigParser
 from collections import OrderedDict
 from Bio import SeqIO
 
-import get_parser as get_parser
-
-opt_cfg = get_parser.get_parser()
+'''import est.run as run'''
+import run
+opt_cfg = run.get_parser()
 
 
 class RunCmd():
@@ -26,7 +25,9 @@ class RunCmd():
         self.codon_mrege = None
         self.out_path = os.getcwd()
 
-        self.software_path, self.opt = self.get_config()
+        self.opt = self.get_config()
+        self.software_path = self.get_soft_path()
+
         for k, v in self.software_path.items():
             setattr(self, str(k), v)
         for k, v in self.opt.items():
@@ -43,9 +44,15 @@ class RunCmd():
         # read options
         cfg_parser.read(opt_cfg)
         opt = dict(cfg_parser.items('opt'))
-        software_path = dict(cfg_parser.items('software'))
+        return opt
 
-        return software_path, opt
+    def get_soft_path(self):
+        cfg_parser = ConfigParser()
+        ob_path = os.path.split(__file__)[0]
+        cfg = os.path.join(ob_path, "cfg", "software.ini")
+        cfg_parser.read(cfg)
+        software_path = dict(cfg_parser.items('software'))
+        return software_path
 
     def check_software(self):
         """Iterate through each software in the profile to check if it is available"""
@@ -68,8 +75,8 @@ class RunCmd():
 
     def mkdir(self):
         """make directory"""
-        out_dir = ['01_cds_format', '02_pep', '03_hmm_out', '04_OG', '05_seq/01_cds', '05_seq/02_pep', '06_aln/01_aln',
-                   '06_aln/02_trim', '06_aln/03_trim_rename', '07_tree/01_coatree', '07_tree/02_contree', '08_result']
+        out_dir = ['01_cds_format', '02_pep', '03_hmm_out', '04_OG', '05_seq/', '06_aln/01_aln', '06_aln/02_trim',
+                   '06_aln/03_trim_rename', '07_tree/01_coatree', '07_tree/02_contree', '08_result']
         for d in out_dir:
             try:
                 os.makedirs(f"{self.out_path}/{d}")
@@ -229,16 +236,20 @@ class RunCmd():
             aln_pep = f"{self.out_path}/06_aln/01_aln/{basename}_pep.aln"
             codon_seq = f"{self.out_path}/06_aln/01_aln/{basename}_codon.aln"
             trim = f"{self.out_path}/06_aln/02_trim/{basename}_codon.trim"
-            trim_rename = f"{self.out_path}/06_aln/02_trim_rename/{basename}_codon.trim"
+            trim_rename = f"{self.out_path}/06_aln/03_trim_rename/{basename}_codon.trim"
             tree_path = f"{self.out_path}/07_tree/01_coatree"
             # 提取cds、比对、修剪、修改id、构建树
             self.get_seq_by_id(infile, self.cds_mrege, seq_cds)
             self.get_seq_by_id(infile, self.pep_mrege, seq_pep)
             self.aln(seq_pep, aln_pep)
             self.aln_codon(aln_pep, seq_cds, codon_seq)
-            self.trim(codon_seq, trim)
-            self.rename_id(trim, trim_rename)
-            self.built_tree(trim_rename, tree_path, f"{basename}_codon", 2)
+            try:
+                self.trim(codon_seq, trim)
+            except Exception:
+                pass #这里要不将04_OG、05_seq下有问题的删掉？
+            else:
+                self.rename_id(trim, trim_rename)
+                self.built_tree(trim_rename, tree_path, f"{basename}_codon", 2)
 
         if self.seq.upper() == 'CDS':
             if self.cds_mrege is None:
@@ -261,13 +272,18 @@ class RunCmd():
     def run_genetree_mul(self):
         """Multiprocess construct trees"""
         OG_list = self.get_infile_list(f"{self.out_path}/04_OG/")
-        # print(infile_list)
-        n = int(self.thread) // 2
-        p = multiprocessing.Pool(n)
-        statuss = p.map(self.get_genetree, OG_list)
-        p.close()
-        p.join()
-        return statuss
+        if len(OG_list) <= 0:
+            print("The number of OGs is 0, please adjust the cover and gene_number parameter to get the appropriate "
+                  "number of OGs, then set mode as 2 to start constructing the species tree.")
+            sys.exit()
+        else:
+            # print(infile_list)
+            n = int(self.thread) // 2
+            p = multiprocessing.Pool(n)
+            statuss = p.map(self.get_genetree, OG_list)
+            p.close()
+            p.join()
+            return statuss
 
     def merge_gene_trees(self, inpath, outpath, soft):
         """Merge gen trees"""
@@ -305,7 +321,7 @@ class RunCmd():
     def get_super_gene(self):
         """将trim_rename后的每个OG串联为super gene， 为确保每个物种序列长度一致，当某个OG中物种覆盖率不是100%时，
         用’-‘*seq_length作为缺失物种的序列。将物种基因list目录下文件名作为串联后序列名称"""
-        OG_list = self.get_infile_list(f'{self.out_path}/06_aln/03_trim_rename')
+        OG_list = self.get_infile_list(f'{self.out_path}/06_aln/02_trim')
         sp_list = self.get_infile_list(self.in_path)
         result = open(f'{self.out_path}/06_aln/03_con.trim', 'w')
 
@@ -318,7 +334,7 @@ class RunCmd():
                 seq_tmp = ''
                 # id_in_genelist = False
                 for line in SeqIO.parse(OG, 'fasta'):
-                    gene_id = line.id
+                    gene_id = line.id.split('_cds_')[0][0:]
                     # print(id)
                     seq = line.seq
                     seq_len = len(seq)

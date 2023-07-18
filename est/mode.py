@@ -4,12 +4,11 @@
 1：从头跑到筛选低拷贝OG，初步判断OG数目是否适当
 3：只运行筛选OG这一步骤，通过改变cover及copy_number参数改变OG数量，直到满足自己要求
 4：OG数量恰当后，即跑完步骤3后，开始跑完后续全部步骤
-5：重新构树，即重新选择序列比对即构树软件
 """
 import sys
 
+'''from est import script, hmm2OG'''
 import script, hmm2OG
-
 cmd = script.RunCmd()
 
 

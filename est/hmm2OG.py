@@ -1,13 +1,12 @@
 import os
-import sys
 import multiprocessing
+import shutil
 
 from configparser import ConfigParser
 
-import get_parser as get_parser
-import script as sccript
-
-opt_cfg = get_parser.get_parser()
+'''from est import run'''
+import run
+opt_cfg = run.get_parser()
 
 
 class HMM_OG:
@@ -19,6 +18,9 @@ class HMM_OG:
 
         self.in_path = f'{self.out_path}/03_hmm_out'
         self.out_path = f'{self.out_path}/04_OG'
+
+        shutil.rmtree(self.out_path)
+        os.mkdir(self.out_path)
 
         try:
             self.cover

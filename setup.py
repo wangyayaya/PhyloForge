@@ -19,7 +19,7 @@ setup(
     long_description_content_type="text/markdown",
     url="https://github.com/wangyayaya/EasySpeciesTree/",
     packages=find_packages(),
-    package_data={'': ['*.config']},
+    package_data={'': ['*.config', '*.cfg', '*.ini']},
     classifiers=[
         "Intended Audience :: Science/Research",
         "Programming Language :: Python :: 3",
