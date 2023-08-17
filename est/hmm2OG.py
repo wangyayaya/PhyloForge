@@ -1,12 +1,13 @@
 import os
 import multiprocessing
+import sys
 import shutil
 
 from configparser import ConfigParser
 
 '''from est import run'''
-import run
-opt_cfg = run.get_parser()
+from est import run
+opt_cfg = run.get_parser()[0]
 
 
 class HMM_OG:
@@ -16,28 +17,41 @@ class HMM_OG:
         for k, v in opt.items():
             setattr(self, str(k), v)
 
+        self.raw_path = f'{self.in_path}'
         self.in_path = f'{self.out_path}/03_hmm_out'
         self.out_path = f'{self.out_path}/04_OG'
 
-        shutil.rmtree(self.out_path)
-        os.mkdir(self.out_path)
+        # 防止每次运行生成的OGs扰乱本次结果，每次都将原OGs删掉再筛选OGs
+        shutil.rmtree(f'{self.out_path}')
+        os.mkdir(f'{self.out_path}')
 
         try:
-            self.cover
+            cover = int(self.cover)
         except AttributeError:
             self.cover = len(self.get_file_paths())
+        except ValueError:
+            print('Please check the cover parameter, which must be a positive integer.')
+            sys.exit()
 
     def get_config(self):
         cfg_parser = ConfigParser()
         # read options
         cfg_parser.read(opt_cfg)
-        opt = dict(cfg_parser.items('opt'))
+        opt = dict(cfg_parser.items('lcn_opt'))
         return opt
 
     def get_file_paths(self):
-        """根据输入目录获取所有文件绝对路径，保存为一个列表，输入目录作为一个参数或直接读取self.in_path？"""
+        """这里输入文件改成与原输入文件对应，这样就可以在原输入目录中增删文件实现续跑"""
+        file_list = [f for f in os.listdir(self.raw_path)]
+        base_name_list = []
+        for f in file_list:
+            base_name = os.path.splitext(os.path.split(f)[1])[0]
+            base_name_list.append(base_name)
+        # print(base_name_list)
+
         file_paths = []
-        for file in os.listdir(self.in_path):
+        for file in base_name_list:
+            file = f'{file}.tbl'
             file_paths.append(os.path.join(self.in_path, file))
         return file_paths
 
@@ -82,7 +96,7 @@ class HMM_OG:
                     gene_busco_dict[gene_id] = busco_id
                     e_tmp = e_true
         for busco_id, gene_dict in busco_list.items():
-            # 选择单拷贝或低拷贝，1：单拷贝，0-3或0-2……低拷贝
+            # 选择单拷贝或低拷贝，1：单拷贝，0以上低拷贝
             if len(gene_dict) <= int(self.copy_number):
                 e_tmp = 1
                 for gene_id, e_true in gene_dict.items():
@@ -100,7 +114,7 @@ class HMM_OG:
         return best_match
 
     def get_all_best_match(self):
-        """将get_best_match函数得到的所有物种最佳匹配的结果以列表形式储存"""
+        """save the result by get_best_match as list"""
         best_match_list = []
         for in_file in self.get_file_paths():
             busco_gene_best = self.get_best_match(in_file)
@@ -122,7 +136,7 @@ class HMM_OG:
                     #print(i)
 
     def run_hmm2OG(self):
-        """多进程运行save_best_match_to_file函数"""
+        """multiprocess run save_best_match_to_file"""
         all_busco_id = self.get_all_busco_id()
         best_match_list = self.get_all_best_match()
         with multiprocessing.Pool(int(self.thread)) as pool:

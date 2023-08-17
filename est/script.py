@@ -4,14 +4,19 @@ import multiprocessing
 import re
 import shutil
 import sys
+import glob
 
 from configparser import ConfigParser
 from collections import OrderedDict
 from Bio import SeqIO
 
-'''import est.run as run'''
-import run
-opt_cfg = run.get_parser()
+import warnings
+from Bio import BiopythonWarning
+warnings.simplefilter('ignore', BiopythonWarning)
+
+from est import run
+
+opt_cfg = run.get_parser()[0]
 
 
 class RunCmd():
@@ -43,7 +48,7 @@ class RunCmd():
         cfg_parser = ConfigParser()
         # read options
         cfg_parser.read(opt_cfg)
-        opt = dict(cfg_parser.items('opt'))
+        opt = dict(cfg_parser.items('lcn_opt'))
         return opt
 
     def get_soft_path(self):
@@ -109,11 +114,13 @@ class RunCmd():
                 for line in idf:
                     name = line.strip()
                     if aDict[name]:
-                        print(">%s\n%s" % (name, ''.join(aDict[name])), file=result)
+                        print(">%s\n%s" % (name, ''.join(aDict[name]).rstrip()), file=result)
 
     def format_and_trans(self, in_file):
-        """将用户提供原始cds序列格式化基因id即翻译为蛋白序列，新id为物种名（basename infile）_cds_raw_id,
-        后续以_cds_为分隔符保留物种名作为基因id构建基因树，便于合并基因树为物种树"""
+        """The original CDS sequences provided by the user will be formatted, with gene IDs translated into protein
+        sequences. The new IDs will be in the format of species name (basename infile)_wy_raw_id. Subsequently,
+        the gene tree will be constructed using the species name preserved as the gene ID, using _wy_ as a separator.
+        This facilitates the merging of gene trees into a species tree."""
         base_name = os.path.splitext(os.path.split(in_file)[1])[0]
         cds_fm_out = f"{self.out_path}/01_cds_format/{base_name}.cds"
         cds_fm_out = open(cds_fm_out, 'w')
@@ -121,8 +128,8 @@ class RunCmd():
         pep_out = open(pep_out, 'w')
         for line in SeqIO.parse(in_file, 'fasta'):
             raw_id = line.id
-            new_id = f'>{base_name}_cds_{raw_id}'
-            cds = re.sub(r'[^ATCGUatcgu]', 'N', str(line.seq))  # 用正则表达式将非法字符替换为N
+            new_id = f'>{base_name}_wy_{raw_id}'
+            cds = re.sub(r'[^ATCGUatcgu]', 'N', str(line.seq))  # 将非法字符替换为N
             pep = line.seq.translate(table="Standard")
             print(f'{new_id} \n {cds}', file=cds_fm_out)
             print(f'{new_id} \n {pep}', file=pep_out)
@@ -142,7 +149,7 @@ class RunCmd():
         with open(infile, 'r') as f1, open(outfile, 'w') as f2:
             for line in f1:
                 if line.startswith('>'):
-                    species_name = line.split('_cds_')[0][1:]
+                    species_name = line.split('_wy_')[0][1:]
                     f2.write('>' + species_name + '\n')
                 else:
                     f2.write(line)
@@ -159,10 +166,20 @@ class RunCmd():
         """Run hmmscan"""
         outfile = f"{self.out_path}/03_hmm_out/{os.path.splitext(os.path.split(infile)[1])[0]}.tbl"
         run = f'{self.hmmscan} --tblout {outfile} --noali -E 1e-50 --cpu 1 {self.orthodb} {infile} >/dev/null 2>&1'
-        # run = f'echo {infile} > {outfile}'
-        status = self.run_command(run)
-        # print(status)
-        return status
+        if os.path.exists(outfile):
+            with open(outfile, 'r') as file:
+                lines = file.readlines()
+                last_line = lines[-1].strip()
+                if "[ok]" in last_line:
+                    pass
+                else:
+                    status = self.run_command(run)
+                    return status
+        else:
+            # run = f'echo {infile} > {outfile}'
+            status = self.run_command(run)
+            # print(status)
+            return status
 
     def run_hmmscan_pl(self):
         """Run hmmscan in multiple processes"""
@@ -198,19 +215,23 @@ class RunCmd():
 
     def built_tree(self, infile, outpath, basename, thread):
         """Construct tree"""
-        if self.tree_software.upper() == 'IQTREE':
-            run = f'{self.iqtree} -s {infile} -pre {outpath}/{basename} -nt {thread} -m MFP --quiet -B 1000'
-        elif self.tree_software.upper() == 'FASTTREE':
-            run = f'{self.fasttree} {infile} > {outpath}/{basename}.tre'
+        if os.path.isfile(infile) and os.path.getsize(infile) == 0:
+            pass
         else:
-            if self.seq.upper() in ['CDS', 'CODON']:
-                run = f'{self.raxml} -f a -x 12345 -p 12345 -# 100 -m GTRGAMMA -s {infile} -n {basename} -T {thread} -w {outpath}'
+            if self.tree_software.upper() == 'IQTREE':
+                run = f'{self.iqtree} -s {infile} -pre {outpath}/{basename} -nt {thread} -m MFP --quiet -B 1000 -redo'
+            elif self.tree_software.upper() == 'FASTTREE':
+                run = f'{self.fasttree} {infile} > {outpath}/{basename}.tre'
             else:
-                run = f'{self.raxml} -f a -x 12345 -p 12345 -# 100 -m PROTGAMMAJTT -s {infile} -n {basename} -T {thread} -w {outpath}'
-        return self.run_command(run)
+                if self.seq.upper() in ['CDS', 'CODON']:
+                    run = f'{self.raxml} -f a -x 12345 -p 12345 -# 100 -m GTRGAMMA -s {infile} -n {basename} -T {thread} -w {outpath}'
+                else:
+                    run = f'{self.raxml} -f a -x 12345 -p 12345 -# 100 -m PROTGAMMAJTT -s {infile} -n {basename} -T {thread} -w {outpath}'
+            self.run_command(run)
 
     def get_genetree(self, infile):
         """pipeline to Construct gene tree"""
+
         def tree_cds_pep(seq_type):
             basename = os.path.splitext(os.path.split(infile)[1])[0]
             basename = f"{basename}_{seq_type}"
@@ -219,7 +240,7 @@ class RunCmd():
             trim = f"{self.out_path}/06_aln/02_trim/{basename}.trim"
             trim_rename = f"{self.out_path}/06_aln/03_trim_rename/{basename}.trim"
             tree_path = f"{self.out_path}/07_tree/01_coatree"
-            # 提取cds、比对、修剪、修改id、构建树
+            # extract cds sequence、alignment、trim、rename id、construct tree
             if seq_type == 'cds':
                 self.get_seq_by_id(infile, self.cds_mrege, seq)
             elif seq_type == 'pep':
@@ -243,11 +264,11 @@ class RunCmd():
             self.get_seq_by_id(infile, self.pep_mrege, seq_pep)
             self.aln(seq_pep, aln_pep)
             self.aln_codon(aln_pep, seq_cds, codon_seq)
-            try:
-                self.trim(codon_seq, trim)
-            except Exception:
-                pass #这里要不将04_OG、05_seq下有问题的删掉？
+            if os.path.isfile(codon_seq) and os.path.getsize(codon_seq) == 0:
+                """to codon， len of cds is not mul of 3. codon file is empty, trimal failed"""
+                os.remove(codon_seq)
             else:
+                self.trim(codon_seq, trim)
                 self.rename_id(trim, trim_rename)
                 self.built_tree(trim_rename, tree_path, f"{basename}_codon", 2)
 
@@ -272,13 +293,26 @@ class RunCmd():
     def run_genetree_mul(self):
         """Multiprocess construct trees"""
         OG_list = self.get_infile_list(f"{self.out_path}/04_OG/")
+        # 删除过去跑出的树及比对后后序列，防止续跑时前面的结果影响
+        dir_list = ['05_seq/', '06_aln/01_aln', '06_aln/02_trim','06_aln/03_trim_rename',
+                    '07_tree/01_coatree', '07_tree/02_contree']
+        for dir in dir_list:
+            try:
+                shutil.rmtree(f'{self.out_path}/{dir}')
+            except FileNotFoundError:
+                pass
+            os.mkdir(f'{self.out_path}/{dir}')
+
         if len(OG_list) <= 0:
             print("The number of OGs is 0, please adjust the cover and gene_number parameter to get the appropriate "
                   "number of OGs, then set mode as 2 to start constructing the species tree.")
             sys.exit()
         else:
             # print(infile_list)
-            n = int(self.thread) // 2
+            if self.tree_software.upper() == 'RAXML' or self.tree_software.upper() == 'IQTREE':
+                n = int(self.thread) // 2
+            else:
+                n = int(self.thread)
             p = multiprocessing.Pool(n)
             statuss = p.map(self.get_genetree, OG_list)
             p.close()
@@ -287,43 +321,39 @@ class RunCmd():
 
     def merge_gene_trees(self, inpath, outpath, soft):
         """Merge gen trees"""
-        out_file = f"{outpath}/merge_gene_trees.tre"
+        out_file = f"{outpath}/merge_gene_trees_{self.seq.lower()}_{soft}.tre"
+
+        if str(soft).upper() == "FASTTREE":
+            gene_tree_list = glob.glob(f'{inpath}/*_{self.seq.lower()}.tre')
+        elif str(soft).upper() == "RAXML":
+            gene_tree_list = glob.glob(f'{inpath}/RAxML_bipartitions.*_{self.seq.lower()}')
+        elif str(soft).upper() == "IQTREE":
+            gene_tree_list = glob.glob(f'{inpath}/*_{self.seq.lower()}.treefile')
+
         with open(out_file, 'w') as out:
-            if str(soft).upper() == "FASTTREE":
-                for f in os.listdir(inpath):
-                    f = f'{inpath}/{f}'
-                    if os.path.splitext(f)[1] == '.tre':
-                        with open(f, 'r') as infile:
-                            for line in infile.readlines():
-                                print(line + '\n', file=out)
-            elif str(soft).upper() == "RAXML":
-                for f in os.listdir(inpath):
-                    f = f'{inpath}/{f}'
-                    if os.path.splitext(os.path.split(f)[1])[0] == "RAxML_bipartitions":
-                        with open(f, 'r') as infile:
-                            for line in infile.readlines():
-                                print(line + '\n', file=out)
-            else:
-                for f in os.listdir(inpath):
-                    f = f'{inpath}/{f}'
-                    if os.path.splitext(f)[1] == '.treefile':
-                        with open(f, 'r') as infile:
-                            for line in infile.readlines():
-                                print(line + '\n', file=out)
+            for f in gene_tree_list:
+                with open(f, 'r') as infile:
+                    for line in infile.readlines():
+                        print(line + '\n', file=out)
+
+        return out_file
 
     def run_astral(self):
         """Construct Coalescence tree"""
-        self.merge_gene_trees(f"{self.out_path}/07_tree/01_coatree", f"{self.out_path}/08_result", self.tree_software)
-        run = f'java -jar {self.astral} -i {self.out_path}/08_result/merge_gene_trees.tre' \
-              f' -r 100 -o {self.out_path}/08_result/Astral_tree.nwk'
+        merge_gene_trees = self.merge_gene_trees(f"{self.out_path}/07_tree/01_coatree", f"{self.out_path}/08_result", self.tree_software)
+        run = f'java -jar {self.astral} -i {merge_gene_trees} -r 100 -o ' \
+              f'{self.out_path}/08_result/coalescent-based_{self.seq.lower()}_{self.tree_software}.nwk'
         return self.run_command(run)
 
     def get_super_gene(self):
         """将trim_rename后的每个OG串联为super gene， 为确保每个物种序列长度一致，当某个OG中物种覆盖率不是100%时，
         用’-‘*seq_length作为缺失物种的序列。将物种基因list目录下文件名作为串联后序列名称"""
-        OG_list = self.get_infile_list(f'{self.out_path}/06_aln/02_trim')
         sp_list = self.get_infile_list(self.in_path)
-        result = open(f'{self.out_path}/06_aln/03_con.trim', 'w')
+        OG_list = glob.glob(f'{self.out_path}/06_aln/02_trim/*_{self.seq.lower()}.trim')
+        supergene = f'{self.out_path}/06_aln/supergene_{self.seq.lower()}.trim'
+        seq_type = f'concatenated_{self.seq.lower()}'
+
+        result = open(supergene, 'w')
 
         for sp_path in sp_list:
             sp = os.path.splitext(os.path.split(sp_path)[1])[0]
@@ -334,7 +364,7 @@ class RunCmd():
                 seq_tmp = ''
                 # id_in_genelist = False
                 for line in SeqIO.parse(OG, 'fasta'):
-                    gene_id = line.id.split('_cds_')[0][0:]
+                    gene_id = line.id.split('_wy_')[0][0:]
                     # print(id)
                     seq = line.seq
                     seq_len = len(seq)
@@ -348,20 +378,22 @@ class RunCmd():
                         # break
                 sp_seq += seq_tmp
             print(f'>{sp}\n{sp_seq}', file=result)
+            # print(f'>{sp}\n{sp_seq}')
+        return supergene, seq_type
 
     def run_contree(self):
         """Construct Concatenation tree"""
-        self.get_super_gene()
-        self.built_tree(f'{self.out_path}/06_aln/03_con.trim',
-                        f'{self.out_path}/07_tree/02_contree', 'contree', self.thread)
+        supergene, seq_type = self.get_super_gene()
+        self.built_tree(supergene, f'{self.out_path}/07_tree/02_contree', seq_type, self.thread)
         if self.tree_software.upper() == "FASTTREE":
-            shutil.copyfile(f'{self.out_path}/07_tree/02_contree/contree.tre', f'{self.out_path}/08_result/contree_fasttree.nwk')
+            shutil.copyfile(f'{self.out_path}/07_tree/02_contree/{seq_type}.tre',
+                            f'{self.out_path}/08_result/{seq_type}_fasttree.nwk')
 
         elif self.tree_software.upper() == "RAXML":
-            shutil.copyfile(f'{self.out_path}/07_tree/02_contree/RAxML_bipartitions.contree',
-                            f'{self.out_path}/08_result/contree_RAxML_bipartitions.nwk')
-            shutil.copyfile(f'{self.out_path}/07_tree/02_contree/RAxML_bipartitionsBranchLabels.contree',
-                            f'{self.out_path}/08_result/contree_RAxML_bipartitionsBranchLabels.nwk')
+            shutil.copyfile(f'{self.out_path}/07_tree/02_contree/RAxML_bipartitions.{seq_type}',
+                            f'{self.out_path}/08_result/{seq_type}_RAxML_bipartitions.nwk')
+            shutil.copyfile(f'{self.out_path}/07_tree/02_contree/RAxML_bipartitionsBranchLabels.{seq_type}',
+                            f'{self.out_path}/08_result/{seq_type}_RAxML_bipartitionsBranchLabels.nwk')
         else:
-            shutil.copyfile(f'{self.out_path}/07_tree/02_contree/contree.treefile',
-                            f'{self.out_path}/08_result/contree_iqtree.nwk')
+            shutil.copyfile(f'{self.out_path}/07_tree/02_contree/{seq_type}.treefile',
+                            f'{self.out_path}/08_result/{seq_type}_iqtree.nwk')
