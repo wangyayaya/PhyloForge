@@ -6,9 +6,9 @@
 
 1）需要做物种树的物种cds序列（建议每个基因只保留最长转录本），存放于一个文件夹下，物种cds文件建议以genus_species.cds (fa/fas/fasta)来命名，最终物种树中即以genus_species作为物种名。
 
-2）与做物种树的物种对应的BUSCO单拷贝数据库，该文件可以按如下步骤获取：
+2）与做物种树的物种对应的BUSCO核心基因集，该文件可以按如下步骤获取处理：
 
-访问BUSCO数据库：[Index of /v5/data/lineages/ (ezlab.org)](https://busco-data.ezlab.org/v5/data/lineages/)或者https://busco-archive.ezlab.org/v3/ 下载与物种对应的数据库，例如被子植物一般下载有胚植物（Embryophyta odb10）单拷贝基因数据集：
+访问BUSCO数据库：[Index of /v5/data/lineages/ (ezlab.org)](https://busco-data.ezlab.org/v5/data/lineages/)或者https://busco-archive.ezlab.org/v3/ 下载与物种对应的数据集，例如被子植物一般下载有胚植物（Embryophyta odb10）核心基因集：
 
 ```shell
 $ wget -c https://busco-archive.ezlab.org/v3/datasets/prerelease/embryophyta_odb10.tar.gz -O embryophyta_odb10.tar.gz
@@ -20,7 +20,7 @@ $ hmmpress embryophyta_odb10.hmm
 $ realpath embryophyta_odb10.hmm
 ```
 
-## 2.所需软件
+## 2.依赖软件
 
 1）hmmer软件，安装该软件后，主要使用hmmpress命令和hmmscan命令。目前大部分window版本的hmmer软件不能识别我们需要的hmm文件。**必需**
 
@@ -36,7 +36,7 @@ $ realpath embryophyta_odb10.hmm
 
 ## 3.设置配置文件
 
-### 首先配置相关软件，可运行run.py -gsc >software.config生成软件配置文件
+### 首先配置相关软件，可运行est -gsc >software.config生成软件配置文件
 
 software.config：
 
@@ -62,12 +62,12 @@ pal2nal=/opt/service/miniconda3/envs/r4_py37_env/bin/pal2nal.pl
 
 ### 运行参数配置
 
-可通过run.py -grc >run.config获取配置文件
+可通过est -grc >run.config获取配置文件
 
 run.config参数说明:
 
 ```
-[opt]
+[lcn_opt] #构建基于低拷贝/单拷贝核基因的树
 in_path = D:\WANG\Species_Tree\cs\ #cds文件目录
 out_path = D:\WANG\Species_Tree\Species_Tree\out\  #结果输出目录
 thread = int(>=2) #线程数，默认10，最小2
@@ -81,12 +81,19 @@ mode = 0 #选择运行模式，默认0
 #1：从头跑到筛选完OG（初步判断OG数目是否适当）
 #2：单独运行筛选OG这一步骤（筛选出适当的OG数目）
 #3：从筛选完OG后运行完后续全步骤
-seq = cds/pep/codon #选择用那种类型序列来构建物种树，默认codon
+seq = cds/pep/codon #选择用那种类型序列来构建物种树，默认cds
 #注意，当选择使用codon做树时，并不是所有序列都能转换为codon，因此实际用来做树的OG数目可能会少于筛选到的数目，可使用ls out_path/06_aln/02_trim|wc -l查看实际做树的OG数目
 coa_con = 0/1/2 #选择构建并联树或串联树，0：只构建并联树，1：构建并联树及串联树
+
+[snp_opt] #构建基于SNP位点的树
+vcf_file = in.vcf
+out_path = /path/to/output/
+tree_software = treebst
 ```
 
-完成配置后，运行命令：run.py -c run.config开始运行。
+完成配置后，运行命令：est -l run.config构建基于低拷贝核基因系统发育树。-s参数则是构建基于SNP位点的系统发育树
+
+Tips：支持续跑，如需增删物种续跑，只需增删in_path中文件即可。如果需要修改某一物种的cds文件后续跑，且03_hmm_out下已生成对应的完整的文件，请删除03_hmm_out下对应的该物种结果文件再续跑，或将新的cds文件重命名。
 
 ## 4.结果文件说明
 
@@ -106,5 +113,6 @@ out/
 ├── 07_tree #树
 │   ├── 01_coatree #并联树
 │   └── 02_contree #串联树
-└── 08_result #结果，串联树，并联树
+└── 08_result #结果，生成结果以串联/并联_seq_software.nwk格式命名
 ```
+
