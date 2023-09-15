@@ -4,20 +4,26 @@ import subprocess
 import sys
 from configparser import ConfigParser
 
+from est import script, run
 
-class VCF2TREE():
+cmd = script.RunCmd()
+
+
+class VcfTree():
     def __init__(self):
         self.treesoft = 'treebest'
+        opt_cfg = run.get_parser()[0]
+        opt = cmd.get_config(opt_cfg, 'snp_opt')
+        for k, v in opt.items():
+            setattr(self, str(k), v)
 
-    def run_command(self, command):
         try:
-            output = subprocess.check_output(command, shell=True, stderr=subprocess.DEVNULL)
-            return 0, output.decode()
-        except subprocess.CalledProcessError as e:
-            print(e)
-            return e.returncode
+            os.makedirs(f"{self.out_path}/snp")
+            self.out_path = f"{self.out_path}/snp"
+        except OSError:
+            pass
 
-    def convert_vcf_to_seq(self, vcf_file, out, f):
+    def convert_vcf_to_seq(self, vcf_file, out, format):
         # Open the input vcf file.
         with open(vcf_file) as vcf_file:
             lines = vcf_file.readlines()
@@ -57,7 +63,7 @@ class VCF2TREE():
 
                     seqs[i] += gt_seq
 
-        if f == 'phy':
+        if format == 'phy':
             # Prepare the phylip string.
             phylip_str = f"{len(ids)} {len(seqs[0])}\n"
             for i in range(len(ids)):
@@ -111,19 +117,21 @@ class VCF2TREE():
         run = f'cd {out_path} && seqboot< seqboot.par && mv outfile seqboot.out &&dnadist<dnadist.par && ' \
               'mv outfile dnadist.out && neighbor<neighbor.par && mv outfile nei.out && mv outtree nei.tree && ' \
               'consense<consense.par && mv outfile cons.out && mv outtree constree'
-        return self.run_command(run)
+        return cmd.run_command(run)
 
     def PhyML_tree(self, in_phy):
         run = f'{self.treesoft} -i {in_phy} -b 100 -m HKY85 -f m -v e -a e -o tlr'
-        return self.run_command(run)
+        return cmd.run_command(run)
 
-    def tree_best_tree(self, in_fa):
-        run = f'{self.treesoft} nj -b 1000  in_fa >{in_fa}_treebest.NHX'
-        return self.run_command(run)
+    def TreeBeST_tree(self, in_fa):
+        run = f'{self.treesoft} nj -b 1000  {in_fa} >{in_fa}_treebest.NHX'
+        return cmd.run_command(run)
+
+    def snp_tree(self):
+        if self.treesoft.upper() == 'TREEBEST':
+            self.convert_vcf_to_seq(self.vcf_file, f'{self.out_path}/in.fa', 'fa')
+            self.TreeBeST_tree(f'{self.out_path}/in.fa')
+        else:
+            self.PhyML_tree(f'{self.out_path}/in.phy')
 
 
-def main():
-
-
-if __name__ == '__main__':
-    VCF2TREE().tree_best_tree('a')

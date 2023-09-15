@@ -5,32 +5,34 @@ import re
 import shutil
 import sys
 import glob
+import warnings
 
 from configparser import ConfigParser
 from collections import OrderedDict
 from Bio import SeqIO
-
-import warnings
 from Bio import BiopythonWarning
-warnings.simplefilter('ignore', BiopythonWarning)
 
 from est import run
 
-opt_cfg = run.get_parser()[0]
+warnings.simplefilter('ignore', BiopythonWarning)
 
 
 class RunCmd():
     def __init__(self):
         self.aln_software = 'mafft'
-        self.tree_software = 'raxmal'
+        self.tree_software = 'raxml'
         self.seq = 'cds'
         self.thread = 10
         self.cds_mrege = None
         self.pep_mrege = None
         self.codon_mrege = None
         self.out_path = os.getcwd()
+        opt_cfg, tree = run.get_parser()[0], run.get_parser()[1]
+        if tree == 'lcn':
+            self.opt = self.get_config(opt_cfg, 'lcn_opt')
+        elif tree == 'organelle':
+            self.opt = self.get_config(opt_cfg, 'organelle_opt')
 
-        self.opt = self.get_config()
         self.software_path = self.get_soft_path()
 
         for k, v in self.software_path.items():
@@ -38,17 +40,25 @@ class RunCmd():
         for k, v in self.opt.items():
             setattr(self, str(k), v)
             # print(str(k), v)
+        try:
+            if int(self.thread) <= 1:
+                self.thread = 2
+        except ValueError:
+            print("thread should be int, please check it")
+            sys.exit()
 
-        if int(self.thread) <= 1:
-            self.thread = 2
+        if str(self.tree_software).upper() not in ['RAXML', 'IQTREE', 'FASTTREE']:
+            self.tree_software = 'raxml'
+        if str(self.seq).upper() not in ["CDS", "PEP", "CODON"]:
+            self.seq = 'cds'
 
         self.check_software()  # 运行时先检查软件是否可用
 
-    def get_config(self):
+    def get_config(self, opt_cfg, opt):
         cfg_parser = ConfigParser()
         # read options
         cfg_parser.read(opt_cfg)
-        opt = dict(cfg_parser.items('lcn_opt'))
+        opt = dict(cfg_parser.items(opt))
         return opt
 
     def get_soft_path(self):
@@ -195,10 +205,10 @@ class RunCmd():
 
     def aln(self, infile, outfile):
         """Sequence alignment"""
-        if self.aln_software == 'mafft':
-            run = '{} {} > {} 2>/dev/null'.format(self.mafft, infile, outfile)
-        else:
+        if str(self.aln_software).upper() == 'MUSCLE':
             run = '{} -align {} -output {}'.format(self.muscle, infile, outfile)
+        else:
+            run = '{} {} > {} 2>/dev/null'.format(self.mafft, infile, outfile)
         status = self.run_command(run)
         return status
 
@@ -309,10 +319,12 @@ class RunCmd():
             sys.exit()
         else:
             # print(infile_list)
-            if self.tree_software.upper() == 'RAXML' or self.tree_software.upper() == 'IQTREE':
-                n = int(self.thread) // 2
-            else:
+
+            if self.tree_software.upper() == 'FASTTREE':
                 n = int(self.thread)
+            else:
+                n = int(self.thread) // 2
+
             p = multiprocessing.Pool(n)
             statuss = p.map(self.get_genetree, OG_list)
             p.close()
@@ -325,10 +337,10 @@ class RunCmd():
 
         if str(soft).upper() == "FASTTREE":
             gene_tree_list = glob.glob(f'{inpath}/*_{self.seq.lower()}.tre')
-        elif str(soft).upper() == "RAXML":
-            gene_tree_list = glob.glob(f'{inpath}/RAxML_bipartitions.*_{self.seq.lower()}')
         elif str(soft).upper() == "IQTREE":
             gene_tree_list = glob.glob(f'{inpath}/*_{self.seq.lower()}.treefile')
+        else:
+            gene_tree_list = glob.glob(f'{inpath}/RAxML_bipartitions.*_{self.seq.lower()}')
 
         with open(out_file, 'w') as out:
             for f in gene_tree_list:

@@ -5,9 +5,9 @@ import shutil
 
 from configparser import ConfigParser
 
-'''from est import run'''
+
 from est import run
-opt_cfg = run.get_parser()[0]
+
 
 
 class HMM_OG:
@@ -29,11 +29,14 @@ class HMM_OG:
             cover = int(self.cover)
         except AttributeError:
             self.cover = len(self.get_file_paths())
-        except ValueError:
-            print('Please check the cover parameter, which must be a positive integer.')
-            sys.exit()
+
+        try:
+            copy_number = int(self.copy_number)
+        except AttributeError:
+            self.copy_number = 1
 
     def get_config(self):
+        opt_cfg = run.get_parser()[0]
         cfg_parser = ConfigParser()
         # read options
         cfg_parser.read(opt_cfg)
