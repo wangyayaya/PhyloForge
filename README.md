@@ -1,8 +1,12 @@
-# EasySpeciesTree使用说明
+# TreeTools使用说明
 
-## 1.所需文件
+本程序可用于基于核基因组CDS序列、细胞器CDS序列及SNP位点构建系统发育树
 
-该软件需要两个需要用户提供的文件：
+## 1.基于低拷贝核基因组CDS序列构建系统发育树
+
+### 1.所需文件
+
+该流程需要两个需要用户提供的文件：
 
 1）需要做物种树的物种cds序列（建议每个基因只保留最长转录本），存放于一个文件夹下，物种cds文件建议以genus_species.cds (fa/fas/fasta)来命名，最终物种树中即以genus_species作为物种名。
 
@@ -20,7 +24,7 @@ $ hmmpress embryophyta_odb10.hmm
 $ realpath embryophyta_odb10.hmm
 ```
 
-## 2.依赖软件
+### 2.依赖软件
 
 1）hmmer软件，安装该软件后，主要使用hmmpress命令和hmmscan命令。目前大部分window版本的hmmer软件不能识别我们需要的hmm文件。**必需**
 
@@ -34,9 +38,9 @@ $ realpath embryophyta_odb10.hmm
 
 6）基因树合并软件：astral，**必需**
 
-## 3.设置配置文件
+### 3.设置软件配置文件
 
-### 首先配置相关软件，可运行est -gsc >software.config生成软件配置文件
+首先配置相关软件，可运行est -gsc >software.config生成软件配置文件
 
 software.config：
 
@@ -60,7 +64,7 @@ pal2nal=/opt/service/miniconda3/envs/r4_py37_env/bin/pal2nal.pl
 
 运行run.py  -sc software.config命令配置软件
 
-### 运行参数配置
+### 4.运行参数配置说明
 
 可通过est -grc >run.config获取配置文件
 
@@ -71,7 +75,7 @@ run.config参数说明:
 in_path = D:\WANG\Species_Tree\cs\ #cds文件目录
 out_path = D:\WANG\Species_Tree\Species_Tree\out\  #结果输出目录
 thread = int(>=2) #线程数，默认10，最小2
-orthodb = /path/to/buscoDB  #busco数据库路径，参考1.2
+orthodb = /path/to/buscoDB  #busco数据库路径，参考1.1
 aln_software = muscle/mafft #序列比对软件，默认mafft
 tree_software = iqtree/fasttree/raxmal(Multithreaded version) #构树软件，默认raxmal 
 cover = 7 #每个OG中物种数量，当做树物种为100，该参数选择50时，即每个OG中物种覆盖率至少为50%。默认为物种数量，即物种覆盖率100%
@@ -88,14 +92,27 @@ coa_con = 0/1 #选择构建并联树或串联树，0：只构建并联树，1：
 [snp_opt] #构建基于SNP位点的树
 vcf_file = in.vcf
 out_path = /path/to/output/
-tree_software = treebst
+tree_software = treebst #构树软件，可选择treebest或者phyml
+
+[organelle_opt] #构建基于细胞器编码基因cds的系统发育树
+in_path =  D:\WANG\Species_Tree\cs\  #cds文件目录
+out_path =  D:\WANG\Species_Tree\out\  #输出结果目录
+#以下同[lcn_opt]
+thread = 10
+cover = 8
+aln_software = mafft
+tree_software = raxml
+seq = codon
 ```
 
-完成配置后，运行命令：est -l run.config构建基于低拷贝核基因系统发育树。-s参数则是构建基于SNP位点的系统发育树
+完成配置后，运行命令：est -l run.config构建基于低拷贝核基因系统发育树；-s参数构建基于SNP位点的系统发育树；-o参数构建基于细胞器编码基因的系统发育树。
 
-Tips：支持续跑，如需增删物种续跑，只需增删in_path中文件即可。如果需要修改某一物种的cds文件后续跑，且03_hmm_out下已生成对应的完整的文件，请删除03_hmm_out下对应的该物种结果文件再续跑，或将新的cds文件重命名。
+Tips：
 
-## 4.结果文件说明
+1. 基于低拷贝核基因组流程支持续跑，如需增删物种续跑，只需增删in_path中文件即可。如果需要修改某一物种的cds文件后续跑，且03_hmm_out下已生成对应的完整的文件，请删除03_hmm_out下对应的该物种结果文件再续跑，或将新的cds文件重命名。
+2. 当seq选择condon时，有些不规范的序列无法转换为codon，会默认将该序列删除。实际建树的序列可能会少于OG的数量。
+
+### 5.结果文件说明
 
 ```
 out/
@@ -116,3 +133,84 @@ out/
 └── 08_result #结果，生成结果以串联/并联_seq_software.nwk格式命名
 ```
 
+## 2.基于细胞器CDS序列构建系统发育树
+
+### 1.所需文件
+
+该软件需要需要用户提供做物种树物种的细胞器cds序列，存放于一个目录下，物种cds文件建议以genus_species.cds (fa/fas/fasta)来命名，最终物种树中即以genus_species作为物种名。要求每个物种fasta文件中基因ID以基因名来命名（基因名不区分大小写），或者使用从ncbi下载而来的格式，如下列三种格式：
+
+```
+>psbA
+ATGCCAACTATTAAACAACTTATTAGAAATACAAGACAGCCAATCAGAAATGTCACGAAATCCCCCGCTC
+……
+>psbA lcl|MH042531.1_cds_AXT17556.1_2 [gene=psbA] [protein=photosystem II protein D1] [protein_id=AXT17556.1] [location=complement(459..1520)] [gbkey=CDS]
+ATGCCAACTATTAAACAACTTATTAGAAATACAAGACAGCCAATCAGAAATGTCACGAAATCCCCCGCTC
+……
+>lcl|MH042531.1_cds_AXT17556.1_2 [gene=psbA] [protein=photosystem II protein D1] [protein_id=AXT17556.1] [location=complement(459..1520)] [gbkey=CDS]
+ATGACTGCAATTTTAGAGAGACGCGAAAGCGAAAGCCTATGGGGTCGCTTCTGTAACTGGATAACTAGCA
+……
+```
+
+Tips：NCBI下载的数据应带有[gene=psbA]，以识别基因，否则以fasta文件中的基因ID作为基因名
+
+### 2.依赖软件
+
+见1.2中2-6
+
+### 3.设置软件配置文件
+
+同1.3
+
+### 4.运行参数配置说明
+
+见1.4中[organelle_opt]
+
+### 5.结果文件说明
+
+```
+out/
+├── 01_cds_format #格式化后的cds文件
+├── 02_pep #cds对应的pep文件
+├── 03_OG_all #根据基因名获得的所有OG
+├── 04_OG #根据物种覆盖度筛选后的OG
+#以下同1.5中的结果
+├── 05_seq
+├── 06_aln
+│   ├── 01_aln
+│   ├── 02_trim
+│   └── 03_trim_rename
+├── 07_tree
+│   ├── 01_coatree
+│   └── 02_contree
+└── 08_result
+```
+
+## 3.基于SNP位点构建系统发育树
+
+### 1.所需文件
+
+过滤后的VCF格式文件
+
+### 2.依赖软件
+
+与配置文件对应的构树软件：treebest或者PhyML
+
+### 3.设置软件配置文件
+
+同1.3
+
+### 4.运行参数配置说明
+
+见1.4中[snp_opt]
+
+### 5.结果文件说明
+
+```
+out/
+├── 转化格式后的fasta或phylip格式的文件
+└── 构建的进化树
+```
+
+
+
+tips：获取测试数据：[wangyayaya/EasySpeciesTree: CDS to species tree (github.com)](https://github.com/wangyayaya/EasySpeciesTree)
