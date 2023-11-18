@@ -9,11 +9,11 @@ with open("README.md", "r", encoding='utf-8') as fh:
 required = ['biopython']
 
 setup(
-    name="est",
+    name="treetool",
     version="0.0.0",
     author="Ya Wang",
     author_email="1552082076@qq.com",
-    description="CDS to species tree",
+    description="A pipeline for constructing a phylogenetic tree based on low/copy nuclear gene CDS, organelle CDS, or SNP loci",
     license="BSD License",
     long_description=long_description,
     long_description_content_type="text/markdown",
@@ -28,7 +28,7 @@ setup(
     ],
     entry_points={
         'console_scripts': [
-            'est = est.run:main',
+            'treetool = treetool.run:main',
         ]
     },
     zip_safe=True,

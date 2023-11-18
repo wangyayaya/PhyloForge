@@ -5,9 +5,7 @@ import shutil
 
 from configparser import ConfigParser
 
-
-from est import run
-
+from treetool import run
 
 
 class HMM_OG:
@@ -22,7 +20,10 @@ class HMM_OG:
         self.out_path = f'{self.out_path}/04_OG'
 
         # 防止每次运行生成的OGs扰乱本次结果，每次都将原OGs删掉再筛选OGs
-        shutil.rmtree(f'{self.out_path}')
+        try:
+            shutil.rmtree(f'{self.out_path}')
+        except FileNotFoundError:
+            pass
         os.mkdir(f'{self.out_path}')
 
         try:
@@ -136,7 +137,7 @@ class HMM_OG:
             with open(out_file, 'w') as f:
                 for i in tmp:
                     print(i, file=f)
-                    #print(i)
+                    # print(i)
 
     def run_hmm2OG(self):
         """multiprocess run save_best_match_to_file"""
@@ -144,3 +145,45 @@ class HMM_OG:
         best_match_list = self.get_all_best_match()
         with multiprocessing.Pool(int(self.thread)) as pool:
             pool.starmap(self.save_best_match_to_file, [(busco_id, best_match_list) for busco_id in all_busco_id])
+
+    # 每个OG保留物种所有基因，可以使用Astral-pro（https://github.com/chaoszhang/A-pro）合并基因树，但是不能做串联树
+    #暂时不考虑这里
+    def run_hmm2OG_multi_copy(self):
+        # 把所有结果转换为一个列表result：[{OG1:sp1:[gene1, gene2],sp2:[gene1, gene2]},OG2:{……},OG3:{……}]
+        all_busco_list = self.get_all_busco_id()
+        result = []
+        for busco_id in all_busco_list:
+            OG = {}
+            OG[busco_id] = {}
+            for in_file in self.get_file_paths():
+                sp = os.path.splitext(os.path.split(in_file)[1])[0]
+                OG[busco_id][sp] = []
+                with open(in_file, 'r') as f:
+                    for line in f:
+                        if not line.startswith('#'):
+                            line = line.split()
+                            busco = line[0]
+                            gene_id = line[2]
+                            if busco == busco_id:
+                                OG[busco_id][sp].append(gene_id)
+                # 根据copy_number进行筛选
+                if len(OG[busco_id][sp]) > int(self.copy_number) or len(OG[busco_id][sp]) == 0:
+                    OG[busco_id].pop(sp)
+            result.append(OG)
+        # print(result)
+        # 根据cover进行筛选OG至04_OG目录并保留result中符合条件的结果
+        for og in result:
+            for k, v in og.items():
+                cover = len(og[k])
+                if cover >= int(self.cover):
+                    # print(k)
+                    # print(v.keys())
+                    result.remove(og)
+                    out_OG = f'{self.out_path}/busco{k}'
+                    with open(out_OG, 'w') as f:
+                        for gene in v.values():
+                            for gene in gene:
+                                species_name = gene.split('_wy_')[0][0:]
+                                print(gene, file=f)  # 保留合格的至04_OG目录
+                                print(f'{gene}\t{species_name}')  # 保留基因及其对应物种名，后续astral-pro合并需要用到
+        return result

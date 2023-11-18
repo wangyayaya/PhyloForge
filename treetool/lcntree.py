@@ -7,11 +7,7 @@ mode to run
 """
 import sys
 
-from configparser import ConfigParser
-
-from est import script, hmm2OG, run
-
-# import script, hmm2OG
+from treetool import script, hmm2OG, run
 cmd = script.RunCmd()
 
 
@@ -54,7 +50,7 @@ class LcnTree:
             sys.exit()
 
         try:
-            if str(self.seq).upper() not in ["CDS", "PEP", "CODON"]:
+            if str(self.seq).upper() not in ["CDS", "PEP", "CODON", "CODON1", "CODON2"]:
                 print(f'The seq: {self.seq} is not recognized, and CDS will be used')
         except AttributeError:
             print('The seq is not specified, and CDS will be used')
@@ -71,7 +67,7 @@ class LcnTree:
             if str(self.aln_software).upper() not in ['MAFFT', 'MUSCLE']:
                 print(f'The aln_software: {self.aln_software} is not recognized, and MAFFT will be used or sequence alignment')
         except AttributeError:
-            print('Sequence alignment software is not specified, muscle software will be used for sequence alignment')
+            print('Sequence alignment software is not specified, MAFFT will be used for sequence alignment')
 
         try:
             if str(self.tree_software).upper() not in ['RAXML', 'IQTREE', 'FASTTREE']:
@@ -81,7 +77,7 @@ class LcnTree:
 
         try:
             n = int(self.mode)
-            if  n not in [0, 1, 2, 3]:
+            if n not in [0, 1, 2, 3, 4]:
                 print('mode should be 0, 1, 2 or 3, please check it')
                 sys.exit()
         except ValueError:
@@ -148,4 +144,4 @@ class LcnTree:
         elif n == 3:
             self.run_mode3()
         else:
-            self.run_mode0()
+            hmm2OG.HMM_OG().run_hmm2OG_multi_copy()

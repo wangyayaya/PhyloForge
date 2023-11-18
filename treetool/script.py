@@ -12,9 +12,9 @@ from collections import OrderedDict
 from Bio import SeqIO
 from Bio import BiopythonWarning
 
-from est import run
-
 warnings.simplefilter('ignore', BiopythonWarning)
+
+from treetool import run
 
 
 class RunCmd():
@@ -26,12 +26,17 @@ class RunCmd():
         self.cds_mrege = None
         self.pep_mrege = None
         self.codon_mrege = None
+        self.retain_multi_copy = 'F'
         self.out_path = os.getcwd()
         opt_cfg, tree = run.get_parser()[0], run.get_parser()[1]
         if tree == 'lcn':
             self.opt = self.get_config(opt_cfg, 'lcn_opt')
         elif tree == 'organelle':
             self.opt = self.get_config(opt_cfg, 'organelle_opt')
+        elif tree == 'snp':
+            self.opt = self.get_config(opt_cfg, 'snp_opt')
+        elif tree == 'whole_genome':
+            self.opt = self.get_config(opt_cfg, 'whole_genome_opt')
 
         self.software_path = self.get_soft_path()
 
@@ -49,10 +54,11 @@ class RunCmd():
 
         if str(self.tree_software).upper() not in ['RAXML', 'IQTREE', 'FASTTREE']:
             self.tree_software = 'raxml'
-        if str(self.seq).upper() not in ["CDS", "PEP", "CODON"]:
+        if str(self.seq).upper() not in ["CDS", "PEP", "CODON", "CODON1", "CODON2"]:
             self.seq = 'cds'
 
         self.check_software()  # 运行时先检查软件是否可用
+        self.out_path = os.path.abspath(self.out_path)
 
     def get_config(self, opt_cfg, opt):
         cfg_parser = ConfigParser()
@@ -141,8 +147,8 @@ class RunCmd():
             new_id = f'>{base_name}_wy_{raw_id}'
             cds = re.sub(r'[^ATCGUatcgu]', 'N', str(line.seq))  # 将非法字符替换为N
             pep = line.seq.translate(table="Standard")
-            print(f'{new_id} \n {cds}', file=cds_fm_out)
-            print(f'{new_id} \n {pep}', file=pep_out)
+            print(f'{new_id}\n{cds}', file=cds_fm_out)
+            print(f'{new_id}\n{pep}', file=pep_out)
 
     # 多进程
     def run_format_and_trans(self):
@@ -175,21 +181,30 @@ class RunCmd():
     def HMMscan(self, infile):
         """Run hmmscan"""
         outfile = f"{self.out_path}/03_hmm_out/{os.path.splitext(os.path.split(infile)[1])[0]}.tbl"
-        run = f'{self.hmmscan} --tblout {outfile} --noali -E 1e-50 --cpu 1 {self.orthodb} {infile} >/dev/null 2>&1'
+        run = f'{self.hmmscan} --tblout {outfile} --noali -E 1e-50 --cpu 1 {self.orthodb} {infile}'
         if os.path.exists(outfile):
+            ok = False
             with open(outfile, 'r') as file:
                 lines = file.readlines()
-                last_line = lines[-1].strip()
-                if "[ok]" in last_line:
-                    pass
+                for line in lines:
+                    line = line.strip()
+                    if "[ok]" in line:
+                        ok = True
+                if ok:
+                    status = 0
                 else:
                     status = self.run_command(run)
-                    return status
+                    if status == 0:
+                        with open(outfile, 'a') as f:
+                            f.writelines("# [ok]")
         else:
             # run = f'echo {infile} > {outfile}'
             status = self.run_command(run)
+            if status == 0:
+                with open(outfile, 'a') as f:
+                    f.writelines("# [ok]")
             # print(status)
-            return status
+        return status
 
     def run_hmmscan_pl(self):
         """Run hmmscan in multiple processes"""
@@ -208,14 +223,37 @@ class RunCmd():
         if str(self.aln_software).upper() == 'MUSCLE':
             run = '{} -align {} -output {}'.format(self.muscle, infile, outfile)
         else:
-            run = '{} {} > {} 2>/dev/null'.format(self.mafft, infile, outfile)
+            run = '{} {} > {}'.format(self.mafft, infile, outfile)
         status = self.run_command(run)
         return status
 
     def aln_codon(self, alnfile, cdsfile, out):
         """Convert protein sequence alignment to codon"""
         run = f"perl {self.pal2nal} {alnfile} {cdsfile} -output fasta >{out}"
+        # 提取密码子第几位 codon:不移除，codon1保留1，2位，condon2：保留第三位
         return self.run_command(run)
+
+    def codon_position_select(self, infile, outfile, pos):
+        with open(infile) as f, open(outfile, 'w') as outfile:
+            for line in SeqIO.parse(f, 'fasta'):
+                codon = line.seq
+                outfile.writelines(f'>{line.id}\n')
+                seq = ''
+                if pos == 'codon1':
+                    for i in range(0, len(codon), 3):
+                        # print(i)
+                        pos1 = i
+                        pos2 = i + 1
+                        # print(pos2)
+                        seq += codon[pos1]
+                        seq += codon[pos2]
+                    outfile.writelines(f'{seq}\n')
+                elif pos == 'codon2':
+                    for i in range(2, len(codon), 3):
+                        seq += codon[i]
+                    outfile.writelines(f'{seq}\n')
+                else:
+                    sys.exit()
 
     def trim(self, infile, outfile):
         """Trim sequence"""
@@ -257,8 +295,11 @@ class RunCmd():
                 self.get_seq_by_id(infile, self.pep_mrege, seq)
             self.aln(seq, aln)
             self.trim(aln, trim)
-            self.rename_id(trim, trim_rename)
-            self.built_tree(trim_rename, tree_path, basename, 2)
+            if self.retain_multi_copy.upper() == 'F':
+                self.rename_id(trim, trim_rename)
+                self.built_tree(trim_rename, tree_path, basename, 2)
+            else:
+                self.built_tree(trim, tree_path, basename, 2)
 
         def tree_codon():
             basename = os.path.splitext(os.path.split(infile)[1])[0]
@@ -266,8 +307,8 @@ class RunCmd():
             seq_pep = f"{self.out_path}/05_seq/{basename}_pep.fa"
             aln_pep = f"{self.out_path}/06_aln/01_aln/{basename}_pep.aln"
             codon_seq = f"{self.out_path}/06_aln/01_aln/{basename}_codon.aln"
-            trim = f"{self.out_path}/06_aln/02_trim/{basename}_codon.trim"
-            trim_rename = f"{self.out_path}/06_aln/03_trim_rename/{basename}_codon.trim"
+            trim = f"{self.out_path}/06_aln/02_trim/{basename}_{self.seq}.trim"
+            trim_rename = f"{self.out_path}/06_aln/03_trim_rename/{basename}_{self.seq}.trim"
             tree_path = f"{self.out_path}/07_tree/01_coatree"
             # 提取cds、比对、修剪、修改id、构建树
             self.get_seq_by_id(infile, self.cds_mrege, seq_cds)
@@ -278,9 +319,20 @@ class RunCmd():
                 """to codon， len of cds is not mul of 3. codon file is empty, trimal failed"""
                 os.remove(codon_seq)
             else:
+                #在这里筛选codon位点
+                codon_seq_select = f"{self.out_path}/06_aln/01_aln/{basename}_{self.seq}.aln"
+                if self.seq.upper() in ['CODON1', 'CODON2']:
+                    self.codon_position_select(codon_seq, codon_seq_select, self.seq.lower())
+                    codon_seq = codon_seq_select
+                else:
+                    pass
+
                 self.trim(codon_seq, trim)
-                self.rename_id(trim, trim_rename)
-                self.built_tree(trim_rename, tree_path, f"{basename}_codon", 2)
+                if self.retain_multi_copy.upper() == 'F':
+                    self.rename_id(trim, trim_rename)
+                    self.built_tree(trim_rename, tree_path, f"{basename}_{self.seq}", 2)
+                else:
+                    self.built_tree(trim, tree_path, f"{basename}_{self.seq}", 2)
 
         if self.seq.upper() == 'CDS':
             if self.cds_mrege is None:
@@ -304,7 +356,7 @@ class RunCmd():
         """Multiprocess construct trees"""
         OG_list = self.get_infile_list(f"{self.out_path}/04_OG/")
         # 删除过去跑出的树及比对后后序列，防止续跑时前面的结果影响
-        dir_list = ['05_seq/', '06_aln/01_aln', '06_aln/02_trim','06_aln/03_trim_rename',
+        dir_list = ['05_seq/', '06_aln/01_aln', '06_aln/02_trim', '06_aln/03_trim_rename',
                     '07_tree/01_coatree', '07_tree/02_contree']
         for dir in dir_list:
             try:
@@ -352,9 +404,17 @@ class RunCmd():
 
     def run_astral(self):
         """Construct Coalescence tree"""
-        merge_gene_trees = self.merge_gene_trees(f"{self.out_path}/07_tree/01_coatree", f"{self.out_path}/08_result", self.tree_software)
-        run = f'java -jar {self.astral} -i {merge_gene_trees} -r 100 -o ' \
-              f'{self.out_path}/08_result/coalescent-based_{self.seq.lower()}_{self.tree_software}.nwk'
+        merge_gene_trees = self.merge_gene_trees(f"{self.out_path}/07_tree/01_coatree", f"{self.out_path}/08_result",
+                                                 self.tree_software)
+        #保留多拷贝基因做树，暂时不考虑这里了
+        if self.retain_multi_copy.upper() == 'F':
+            run = f'java -jar {self.astral} -i {merge_gene_trees} -r 100 -o ' \
+                  f'{self.out_path}/08_result/coalescent-based_{self.seq.lower()}_{self.tree_software}.nwk'
+        else:
+            absp_astral = os.path.abspath(os.path.dirname(os.path.dirname(self.astral)))
+            astrallib = os.path.join(absp_astral, 'lib')
+            run = f'java -Djava.library.path={astrallib} -jar {self.astral} -i {merge_gene_trees} ' \
+                  f'-o {self.out_path}/08_result/coalescent-based_{self.seq.lower()}_{self.tree_software}_mc.nwk'
         return self.run_command(run)
 
     def get_super_gene(self):
@@ -400,12 +460,12 @@ class RunCmd():
         if self.tree_software.upper() == "FASTTREE":
             shutil.copyfile(f'{self.out_path}/07_tree/02_contree/{seq_type}.tre',
                             f'{self.out_path}/08_result/{seq_type}_fasttree.nwk')
+        elif self.tree_software.upper() == "IQTREE":
 
-        elif self.tree_software.upper() == "RAXML":
+            shutil.copyfile(f'{self.out_path}/07_tree/02_contree/{seq_type}.treefile',
+                            f'{self.out_path}/08_result/{seq_type}_iqtree.nwk')
+        else:
             shutil.copyfile(f'{self.out_path}/07_tree/02_contree/RAxML_bipartitions.{seq_type}',
                             f'{self.out_path}/08_result/{seq_type}_RAxML_bipartitions.nwk')
             shutil.copyfile(f'{self.out_path}/07_tree/02_contree/RAxML_bipartitionsBranchLabels.{seq_type}',
                             f'{self.out_path}/08_result/{seq_type}_RAxML_bipartitionsBranchLabels.nwk')
-        else:
-            shutil.copyfile(f'{self.out_path}/07_tree/02_contree/{seq_type}.treefile',
-                            f'{self.out_path}/08_result/{seq_type}_iqtree.nwk')

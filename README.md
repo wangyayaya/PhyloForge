@@ -1,10 +1,12 @@
-# TreeTools使用说明
+# TreeTool使用说明
 
-本程序可用于基于核基因组CDS序列、细胞器CDS序列及SNP位点构建系统发育树
+本程序可用于基于核基因组CDS序列、细胞器CDS序列、细胞器全基因组序列及SNP位点构建系统发育树
 
 ## 1.基于低拷贝核基因组CDS序列构建系统发育树
 
-### 1.所需文件
+### 1.1单基因构树模式
+
+#### 1.所需文件
 
 该流程需要两个需要用户提供的文件：
 
@@ -24,7 +26,7 @@ $ hmmpress embryophyta_odb10.hmm
 $ realpath embryophyta_odb10.hmm
 ```
 
-### 2.依赖软件
+#### 2.依赖软件
 
 1）hmmer软件，安装该软件后，主要使用hmmpress命令和hmmscan命令。目前大部分window版本的hmmer软件不能识别我们需要的hmm文件。**必需**
 
@@ -38,7 +40,7 @@ $ realpath embryophyta_odb10.hmm
 
 6）基因树合并软件：astral，**必需**
 
-### 3.设置软件配置文件
+#### 3.设置软件配置文件
 
 首先配置相关软件，可运行est -gsc >software.config生成软件配置文件
 
@@ -59,14 +61,14 @@ pal2nal=/opt/service/miniconda3/envs/r4_py37_env/bin/pal2nal.pl
 
 **注意事项：**
 **#软件在环境变量中直接写调用该软件时的软件名即可，否则需要绝对/相对路径**
-**#opt选项需要用到的软件必需要有对应软件，如opt中序列比对软件选择mafft，则必需配置mafft软件路径，muscle就无需配置**
+**#[lcn_opt]选项需要用到的软件必需要有对应软件，如[lcn_opt]中序列比对软件选择mafft，则必需配置mafft软件路径，muscle就无需配置**
 **#如果选择使用codon序列构树，则软件需配置pal2nal软件**
 
-运行run.py  -sc software.config命令配置软件
+运行treetool  -sc software.config命令配置软件
 
-### 4.运行参数配置说明
+#### 4.运行参数配置说明
 
-可通过est -grc >run.config获取配置文件
+可通过treetool -grc >run.config获取配置文件
 
 run.config参数说明:
 
@@ -85,41 +87,26 @@ mode = 0 #选择运行模式，默认0
 #1：从头跑到筛选完OG（初步判断OG数目是否适当）
 #2：单独运行筛选OG这一步骤（筛选出适当的OG数目）
 #3：从筛选完OG后运行完后续全步骤
-seq = cds/pep/codon #选择用那种类型序列来构建物种树，默认cds
+seq = cds/pep/codon/codon1/condon2 #选择用那种类型序列来构建物种树，默认cds.codon1:保留密码子第1，2位，codon2：保留密码子第三位
 #注意，当选择使用codon做树时，并不是所有序列都能转换为codon，因此实际用来做树的OG数目可能会少于筛选到的数目，可使用ls out_path/06_aln/02_trim|wc -l查看实际做树的OG数目
 coa_con = 0/1 #选择构建并联树或串联树，0：只构建并联树，1：构建并联树及串联树
-
-[snp_opt] #构建基于SNP位点的树
-vcf_file = in.vcf
-out_path = /path/to/output/
-tree_software = treebst #构树软件，可选择treebest或者phyml
-
-[organelle_opt] #构建基于细胞器编码基因cds的系统发育树
-in_path =  D:\WANG\Species_Tree\cs\  #cds文件目录
-out_path =  D:\WANG\Species_Tree\out\  #输出结果目录
-#以下同[lcn_opt]
-thread = 10
-cover = 8
-aln_software = mafft
-tree_software = raxml
-seq = codon
 ```
 
-完成配置后，运行命令：est -l run.config构建基于低拷贝核基因系统发育树；-s参数构建基于SNP位点的系统发育树；-o参数构建基于细胞器编码基因的系统发育树。
+完成配置后，运行命令：treetool -l run.config构建基于低拷贝核基因系统发育树；-s参数构建基于SNP位点的系统发育树；-o参数构建基于细胞器编码基因的系统发育树；-w。
 
 Tips：
 
 1. 基于低拷贝核基因组流程支持续跑，如需增删物种续跑，只需增删in_path中文件即可。如果需要修改某一物种的cds文件后续跑，且03_hmm_out下已生成对应的完整的文件，请删除03_hmm_out下对应的该物种结果文件再续跑，或将新的cds文件重命名。
-2. 当seq选择condon时，有些不规范的序列无法转换为codon，会默认将该序列删除。实际建树的序列可能会少于OG的数量。
+2. 当seq选择condon时，有些不规范的序列无法转换为codon，会默认将该序列删除。实际建树的序列可能会少于筛选到的OG的数量。
 
-### 5.结果文件说明
+#### 5.结果文件说明
 
 ```
 out/
 ├── 01_cds_format #格式化后的cds文件
 ├── 02_pep #cds对应pep文件
 ├── 03_hmm_out #hmmscan搜索结果
-├── 04_OG #筛选的同源低/单拷贝基因OG
+├── 04_OG #筛选的同源低/单拷贝基因OG，当某一物种在该OG下有多个拷贝时，根据hmmscan结果，保留e值最小的一个
 ├── 05_seq #OG对应的序列
 │   ├── 01_cds #cds序列
 │   └── 02_pep #pep序列
@@ -133,9 +120,34 @@ out/
 └── 08_result #结果，生成结果以串联/并联_seq_software.nwk格式命名
 ```
 
-## 2.基于细胞器CDS序列构建系统发育树
+### **1.2多基因构树模式（这里还没完全整合进去，不确定有没有做的必要）**
 
-### 1.所需文件
+在1.1单基因构树模式中，当copy_number参数设置大于1时，某一物种在某一OG下会有多个拷贝，单基因模式会根据hmmscan搜索结果，保留e值最小的一个基因。这里我们开发了多基因模式，即将有多个拷贝的基因全部保留，使用astral-pro(https://github.com/chaoszhang/A-pro)合并基因树，该模式只能构建并联树
+
+所有设置同1.1，除了astral软件修改为astral-pro
+
+```
+[lcn_opt]
+in_path = D:\WANG\Species_Tree\cs\ 
+out_path = D:\WANG\Species_Tree\Species_Tree\out\
+thread = int(>=2)
+orthodb = /path/to/buscoDB
+aln_software = muscle/mafft
+tree_software = iqtree/fasttree/raxmal(Multithreaded version)
+cover = 7
+mode = 0
+seq = cds/pep/codon
+coa_con = 0
+retain_multi_copy = T/F #当某一OG中某一物种基因有多个拷贝时，是否保留多基因建树，当选择T时，只能构建并联树，且astral软件需要astral-pro版本
+```
+
+
+
+## 2.基于细胞器（叶绿体等）基因组数据构建系统发育树
+
+### 2.1 基于编码基因
+
+#### 1.所需文件
 
 该软件需要需要用户提供做物种树物种的细胞器cds序列，存放于一个目录下，物种cds文件建议以genus_species.cds (fa/fas/fasta)来命名，最终物种树中即以genus_species作为物种名。要求每个物种fasta文件中基因ID以基因名来命名（基因名不区分大小写），或者使用从ncbi下载而来的格式，如下列三种格式：
 
@@ -153,19 +165,30 @@ ATGACTGCAATTTTAGAGAGACGCGAAAGCGAAAGCCTATGGGGTCGCTTCTGTAACTGGATAACTAGCA
 
 Tips：NCBI下载的数据应带有[gene=psbA]，以识别基因，否则以fasta文件中的基因ID作为基因名
 
-### 2.依赖软件
+#### 2.依赖软件
 
 见1.2中2-6
 
-### 3.设置软件配置文件
+#### 3.设置软件配置文件
 
 同1.3
 
-### 4.运行参数配置说明
+#### 4.运行参数配置说明
 
-见1.4中[organelle_opt]
+```
+[organelle_opt]
+in_path =  D:\WANG\Species_Tree\cs\  #cds文件目录
+out_path =  D:\WANG\Species_Tree\out\  #输出结果目录
+thread = 10
+cover = 8
+aln_software = mafft
+tree_software = raxml
+seq = codon
+```
 
-### 5.结果文件说明
+
+
+#### 5.结果文件说明
 
 ```
 out/
@@ -185,6 +208,55 @@ out/
 └── 08_result
 ```
 
+### 2.2 基于细胞器全基因组序列
+
+#### 1.所需文件
+
+该软件需要需要用户提供做物种树物种的细胞器全基因组序列，物种全基因组序列文件建议以genus_species.fa(fas/fasta)来命名最终结果中即以genus_species作为物种名。
+
+#### 2.依赖软件
+
+见1.2中2-5及6
+
+#### 3.设置软件配置文件
+
+同1.3
+
+#### 4.运行参数配置说明
+
+```
+[whole_genome_opt]
+in_path = whole_genome_data
+out_path = w_out
+thread = 10
+aln_software = mafft
+tree_software = raal
+```
+
+
+
+#### 5.结果文件说明
+
+```
+out/
+├── 01_sequence_format
+│   └── seq.fa
+├── 02_aln
+│   ├── 01_aln
+│   │   └── seq.aln
+│   └── 02_trim
+│       └── seq.trim
+├── 03_tree
+│   ├── RAxML_bestTree.WholeGenome
+│   ├── RAxML_bipartitionsBranchLabels.WholeGenome
+│   ├── RAxML_bipartitions.WholeGenome
+│   ├── RAxML_bootstrap.WholeGenome
+│   └── RAxML_info.WholeGenome
+└── 04_result
+    ├── WholeGenome_RAxML_bipartitionsBranchLabels.nwk
+    └── WholeGenome_RAxML_bipartitions.nwk
+```
+
 ## 3.基于SNP位点构建系统发育树
 
 ### 1.所需文件
@@ -201,7 +273,12 @@ out/
 
 ### 4.运行参数配置说明
 
-见1.4中[snp_opt]
+```
+[snp_opt] #构建基于SNP位点的树
+vcf_file = in.vcf
+out_path = /path/to/output/
+tree_software = treebst #构树软件，可选择treebest或者phyml
+```
 
 ### 5.结果文件说明
 
@@ -211,6 +288,4 @@ out/
 └── 构建的进化树
 ```
 
-
-
-tips：获取测试数据：[wangyayaya/EasySpeciesTree: CDS to species tree (github.com)](https://github.com/wangyayaya/EasySpeciesTree)
+tips：所有测试数据均可在GitHub获取：[wangyayaya/EasySpeciesTree: CDS to species tree (github.com)](https://github.com/wangyayaya/EasySpeciesTree)

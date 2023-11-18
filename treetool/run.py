@@ -7,7 +7,7 @@ import os.path
 import sys
 import configparser
 
-import est
+import treetool
 
 
 def get_parser():
@@ -17,26 +17,28 @@ def get_parser():
 
     parser.add_argument("-l", "--lcn", type=str, dest='lcn_tree', help="construct phylogenetic tree based on low copy "
                                                                        "genes, you can obtain configfile by running: "
-                                                                       "est -grc >run.cfg")
+                                                                       "treetool -grc >run.cfg")
     parser.add_argument("-s", "--snp", type=str, dest='snp_tree', help="construct phylogenetic tree based on SNP sites")
     parser.add_argument("-o", "--organelle", type=str, dest='organelle_tree',
                         help="construct phylogenetic tree based on organelle-encoded genes.")
+    parser.add_argument("-w", "--whole_genome", type=str, dest='whole_genome_tree',
+                        help="construct phylogenetic tree based on organelle whole genome sequence.")
     parser.add_argument("-grc", action="store_true", help="get the run configuration file")
     parser.add_argument("-gsc", action="store_true", help="get the software configuration file")
-    parser.add_argument("-sc", help="perform software configuration, you can obtain configfile by running: est -gsc "
+    parser.add_argument("-sc", help="perform software configuration, you can obtain configfile by running: treetool -gsc "
                                     ">software.cfg")
-    parser.add_argument("-v", "--version", action="version", version="est 测试版")
+    parser.add_argument("-v", "--version", action="version", version="treetool 测试版")
     args = parser.parse_args()
 
     if args.grc:
-        cfg = os.path.join(est.__path__[0], "cfg/run.config")
+        cfg = os.path.join(treetool.__path__[0], "cfg/run.config")
         with open(cfg) as f:
             for line in f.readlines():
                 print(line, end='')
         sys.exit()
 
     elif args.gsc:
-        cfg = os.path.join(est.__path__[0], "cfg/software.cfg")
+        cfg = os.path.join(treetool.__path__[0], "cfg/software.cfg")
         with open(cfg) as f:
             for line in f.readlines():
                 print(line, end='')
@@ -54,10 +56,14 @@ def get_parser():
         opt_cfg = args.organelle_tree
         tree = 'organelle'
 
+    elif args.whole_genome_tree:
+        opt_cfg = args.whole_genome_tree
+        tree = 'whole_genome'
+
     elif args.sc:
         conf = configparser.ConfigParser()
         conf.read(args.sc)
-        cfg = os.path.join(est.__path__[0], "cfg/software.ini")
+        cfg = os.path.join(treetool.__path__[0], "cfg/software.ini")
         if conf.sections()[0] == 'software':
             conf.write(open(cfg, 'w'))
             print('Software config file has been modified')
@@ -73,15 +79,18 @@ def get_parser():
 
 
 def main():
-    import est.lcntree
-    import est.vcftree
-    import est.organelletree
+    import treetool.lcntree
+    import treetool.vcftree
+    import treetool.organelletree
+    import treetool.wholegenometree
     tree = get_parser()[1]
     if tree == 'lcn':
-        est.lcntree.LcnTree().lcn_tree()
+        treetool.lcntree.LcnTree().lcn_tree()
     elif tree == 'snp':
-        est.vcftree.VcfTree().snp_tree()
+        treetool.vcftree.VcfTree().snp_tree()
     elif tree == 'organelle':
-        est.organelletree.OrganelleTree().run_organelle_tree()
+        treetool.organelletree.OrganelleTree().run_organelle_tree()
+    elif tree =='whole_genome':
+        treetool.wholegenometree.WholeGenomeTree().run_whole_genome_tree()
     else:
         sys.exit()
