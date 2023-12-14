@@ -371,5 +371,5 @@ gene_test/
 └── 06_tree #结果目录
 ```
 
-对该工具有任何想法，均可通过邮箱留下您的宝贵建议：1552083076@qq.com
+对该工具有任何想法，均可通过邮箱留下您的宝贵建议：1552082076@qq.com
 所有测试数据均可在GitHub获取：https://github.com/wangyayaya/TreeTool
