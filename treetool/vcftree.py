@@ -1,25 +1,18 @@
 """snp vcf to tree"""
 import os
-from treetool import script, run
+from treetool import script
+from treetool.script import RunCmd
 cmd = script.RunCmd()
 
 
-class VcfTree():
+class VcfTree(RunCmd):
     def __init__(self):
-        self.tree_software = 'treebest'
-        opt_cfg = run.get_parser()[0]
-        opt = cmd.get_config(opt_cfg, 'snp_opt')
-        for k, v in opt.items():
-            setattr(self, str(k), v)
-
-        try:
-            os.makedirs(f"{self.out_path}")
-            self.out_path = f"{self.out_path}"
-        except OSError:
-            pass
+        super().__init__()
 
     def generate_ambiguous_code(self, base1, base2):
-        # 非纯和突变碱基的歧义码IUPAC Ambiguity Codes，类型没有vcf2phylip的多，但运行结果检查了一下和那个脚本是一样的，因为只考虑单碱基突变的话就只有下面这几种突变
+        # 非纯和突变碱基的歧义码IUPAC Ambiguity Codes，类型没有vcf2phylip的多
+        # 但运行结果检查了一下和那个脚本是一样的，因为只考虑单碱基突变的话就只有下面这几种突变
+        # 一个自己的想法，如果一个位点参考是A，突变是T，那么存在杂合突变时是否可以将0/0转换为AA，1/1转换为TT，而0/1转换为AT，感觉可行
         base1 = base1.upper()
         base2 = base2.upper()
         # 这里是获得的基因型，ATGC*.,"."是缺失的情况
@@ -165,20 +158,14 @@ class VcfTree():
               'consense<consense.par && mv outfile cons.out && mv outtree constree'
         return cmd.run_command(run)
 
-    def PhyML_tree(self, in_phy):
-        run = f'{self.tree_software} -i {in_phy} -b 100 -m HKY85 -f m -v e -a e -o tlr'
-        return cmd.run_command(run)
-
-    def TreeBeST_tree(self, in_fa):
-        run = f'{self.tree_software} nj -b 1000  {in_fa} >{in_fa}_treebest.NHX'
-        return cmd.run_command(run)
-
     def snp_tree(self):
+        basename = 'SNP'
         if self.tree_software.upper() == 'TREEBEST':
-            self.convert_vcf_to_seq(self.vcf_file, f'{self.out_path}/out.fa', 'fasta', 'False')
-            self.TreeBeST_tree(f'{self.out_path}/out.fa')
+            self.convert_vcf_to_seq(self.vcf_file, f'{self.out_path}/SNP.fa', 'fasta', 'False')
+            infile = f'{self.out_path}/SNP.fa'
         else:
-            self.convert_vcf_to_seq(self.vcf_file, f'{self.out_path}/out.phy', 'phylip', 'False')
-            self.PhyML_tree(f'{self.out_path}/out.phy')
+            self.convert_vcf_to_seq(self.vcf_file, f'{self.out_path}/SNP.phy', 'phylip', 'False')
+            infile = f'{self.out_path}/SNP.phy'
+        cmd.built_tree(infile, f'{self.out_path}', basename, 1)
 
 

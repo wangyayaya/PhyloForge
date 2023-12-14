@@ -10,10 +10,10 @@ required = ['biopython']
 
 setup(
     name="treetool",
-    version="0.0.0",
+    version="1.0.0",
     author="Ya Wang",
     author_email="1552082076@qq.com",
-    description="A pipeline for constructing a phylogenetic tree based on low/copy nuclear gene CDS, organelle CDS, or SNP loci",
+    description="A pipeline that can perform various phylogenetic analyses based on multiple types of data",
     license="BSD License",
     long_description=long_description,
     long_description_content_type="text/markdown",

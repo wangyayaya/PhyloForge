@@ -6,27 +6,28 @@ import argparse
 import os.path
 import sys
 import configparser
-
 import treetool
-
 
 def get_parser():
     parser = argparse.ArgumentParser(description=f'''
-    EST (Easy species tree): a user-friendly pipeline used to construct phylogenetic tree based on low-copy nucleic acid (LCN) or SNP sites.
-    ***** https://github.com/wangyayaya/EasySpeciesTree *****''')
+    TreeTool: A tool for multiple phylogenetic analyses
+    ***** https://github.com/wangyayaya/TreeTool *****''')
 
-    parser.add_argument("-l", "--lcn", type=str, dest='lcn_tree', help="construct phylogenetic tree based on low copy "
-                                                                       "genes, you can obtain configfile by running: "
-                                                                       "treetool -grc >run.cfg")
+    parser.add_argument("-l", "--lcn", type=str, dest='lcn_tree',
+                        help="construct phylogenetic tree based on low-copy nuclear genes ")
     parser.add_argument("-s", "--snp", type=str, dest='snp_tree', help="construct phylogenetic tree based on SNP sites")
+    parser.add_argument("-S", "--sv", type=str, dest='sv_tree',
+                        help="construct phylogenetic tree based on SV (structural variation)")
     parser.add_argument("-o", "--organelle", type=str, dest='organelle_tree',
                         help="construct phylogenetic tree based on organelle-encoded genes.")
     parser.add_argument("-w", "--whole_genome", type=str, dest='whole_genome_tree',
                         help="construct phylogenetic tree based on organelle whole genome sequence.")
-    parser.add_argument("-grc", action="store_true", help="get the run configuration file")
-    parser.add_argument("-gsc", action="store_true", help="get the software configuration file")
-    parser.add_argument("-sc", help="perform software configuration, you can obtain configfile by running: treetool -gsc "
-                                    ">software.cfg")
+    parser.add_argument("-g", "--gene", type=str, dest='gene_tree', help="construct gene tree")
+    parser.add_argument("-grc", action="store_true",
+                        help="get the run configuration file: treetool -grc >run.cfg")
+    parser.add_argument("-gsc", action="store_true",
+                        help="get the software configuration file: treetool -gsc >software.cfg")
+    parser.add_argument("-sc", help="perform software configuration: treetool -sc software.cfg")
     parser.add_argument("-v", "--version", action="version", version="treetool 测试版")
     args = parser.parse_args()
 
@@ -52,6 +53,10 @@ def get_parser():
         opt_cfg = args.snp_tree
         tree = 'snp'
 
+    elif args.sv_tree:
+        opt_cfg = args.sv_tree
+        tree = 'sv'
+
     elif args.organelle_tree:
         opt_cfg = args.organelle_tree
         tree = 'organelle'
@@ -59,6 +64,11 @@ def get_parser():
     elif args.whole_genome_tree:
         opt_cfg = args.whole_genome_tree
         tree = 'whole_genome'
+
+    elif args.gene_tree:
+        opt_cfg = args.gene_tree
+        tree = 'gene'
+
 
     elif args.sc:
         conf = configparser.ConfigParser()
@@ -74,23 +84,29 @@ def get_parser():
     else:
         print(parser.format_usage())
         sys.exit()
-    # opt作为参数传入其它模块，这样其它模块中就不用引入run这个包？
+    # opt作为参数传入其它模块，这样其它模块中就不用引入run？
     return [opt_cfg, tree]
 
 
 def main():
-    import treetool.lcntree
-    import treetool.vcftree
-    import treetool.organelletree
-    import treetool.wholegenometree
     tree = get_parser()[1]
     if tree == 'lcn':
+        import treetool.lcntree
         treetool.lcntree.LcnTree().lcn_tree()
     elif tree == 'snp':
+        import treetool.vcftree
         treetool.vcftree.VcfTree().snp_tree()
+    elif tree == 'sv':
+        import treetool.svtree
+        treetool.svtree.SvTree().sv_tree()
     elif tree == 'organelle':
+        import treetool.organelletree
         treetool.organelletree.OrganelleTree().run_organelle_tree()
-    elif tree =='whole_genome':
+    elif tree == 'whole_genome':
+        import treetool.wholegenometree
         treetool.wholegenometree.WholeGenomeTree().run_whole_genome_tree()
+    elif tree == 'gene':
+        import treetool.genetree
+        treetool.genetree.GeneTree().run_gene_tree()
     else:
         sys.exit()

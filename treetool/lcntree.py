@@ -7,19 +7,16 @@ mode to run
 """
 import sys
 
-from treetool import script, hmm2OG, run
+from treetool import script, hmm2OG
+from treetool.script import RunCmd
 cmd = script.RunCmd()
 
 
-class LcnTree:
+class LcnTree(RunCmd):
     def __init__(self):
-        self.coa_con = 0
+        super().__init__()
         self.mode = 0
-        opt_cfg = run.get_parser()[0]
-        opt = cmd.get_config(opt_cfg, 'lcn_opt')
-        #opt = self.get_config('lcn_opt')
-        for k, v in opt.items():
-            setattr(self, str(k), v)
+        self.coa_con = 0
 
     def check(self):
         global n
@@ -48,32 +45,6 @@ class LcnTree:
         except ValueError:
             print("coa_con should be 0 or 1, please check it")
             sys.exit()
-
-        try:
-            if str(self.seq).upper() not in ["CDS", "PEP", "CODON", "CODON1", "CODON2"]:
-                print(f'The seq: {self.seq} is not recognized, and CDS will be used')
-        except AttributeError:
-            print('The seq is not specified, and CDS will be used')
-
-        try:
-            int(self.thread)
-        except AttributeError:
-            pass
-        except ValueError:
-            print("thread should be int (>=2), please check it")
-            sys.exit()
-
-        try:
-            if str(self.aln_software).upper() not in ['MAFFT', 'MUSCLE']:
-                print(f'The aln_software: {self.aln_software} is not recognized, and MAFFT will be used or sequence alignment')
-        except AttributeError:
-            print('Sequence alignment software is not specified, MAFFT will be used for sequence alignment')
-
-        try:
-            if str(self.tree_software).upper() not in ['RAXML', 'IQTREE', 'FASTTREE']:
-                print(f'The tree_software: {self.tree_software} is not recognized, and RAxML will be used')
-        except AttributeError:
-            print('The tree_software is not specified, raxml software will be used')
 
         try:
             n = int(self.mode)

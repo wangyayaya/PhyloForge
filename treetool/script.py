@@ -17,7 +17,7 @@ warnings.simplefilter('ignore', BiopythonWarning)
 from treetool import run
 
 
-class RunCmd():
+class RunCmd:
     def __init__(self):
         self.aln_software = 'mafft'
         self.tree_software = 'raxml'
@@ -28,37 +28,74 @@ class RunCmd():
         self.codon_mrege = None
         self.retain_multi_copy = 'F'
         self.out_path = os.getcwd()
+
         opt_cfg, tree = run.get_parser()[0], run.get_parser()[1]
+        if not os.path.isfile(opt_cfg):
+            print(f"{opt_cfg} is not a valid file, please check it")
+            print("Exiting...")
+            sys.exit(1)
+
         if tree == 'lcn':
             self.opt = self.get_config(opt_cfg, 'lcn_opt')
         elif tree == 'organelle':
             self.opt = self.get_config(opt_cfg, 'organelle_opt')
         elif tree == 'snp':
             self.opt = self.get_config(opt_cfg, 'snp_opt')
+            self.tree_software = 'treebest'
         elif tree == 'whole_genome':
             self.opt = self.get_config(opt_cfg, 'whole_genome_opt')
+        elif tree == 'sv':
+            self.opt = self.get_config(opt_cfg, 'sv_opt')
+            self.tree_software = 'iqtree'
+        elif tree == 'gene':
+            self.opt = self.get_config(opt_cfg, 'gene_opt')
+            self.retain_multi_copy = 'T'
 
         self.software_path = self.get_soft_path()
-
         for k, v in self.software_path.items():
-            setattr(self, str(k), v)
+            setattr(self, str(k).lower(), v)
         for k, v in self.opt.items():
-            setattr(self, str(k), v)
-            # print(str(k), v)
+            if 'software' in k:
+                setattr(self, str(k), v.lower())
+            else:
+                setattr(self, str(k), v)
+
+        try:
+            os.makedirs(f"{self.out_path}")
+            self.out_path = os.path.abspath(f"{self.out_path}")
+        except OSError:
+            pass
+
         try:
             if int(self.thread) <= 1:
                 self.thread = 2
         except ValueError:
             print("thread should be int, please check it")
             sys.exit()
+        try:
+            if str(self.tree_software) not in ['raxml', 'iqtree', 'fasttree', 'treebest', 'phyml']:
+                print(f'The tree_software: {self.tree_software} is not recognized, please check it')
+                sys.exit()
+        except AttributeError:
+            print('The tree_software is not specified, raxml software will be used for lcn/organelle/whole_genome'
+                  'iqtree software will be used for sv, treebest software will be used for snp')
 
-        if str(self.tree_software).upper() not in ['RAXML', 'IQTREE', 'FASTTREE']:
-            self.tree_software = 'raxml'
-        if str(self.seq).upper() not in ["CDS", "PEP", "CODON", "CODON1", "CODON2"]:
-            self.seq = 'cds'
+        try:
+            if str(self.aln_software) not in ['mafft', 'muscle', 'clustalw']:
+                print(f'The aln_software: {self.aln_software} is not recognized, and MAFFT will be used for sequence '
+                      f'alignment')
+                self.aln_software = 'mafft'
+        except AttributeError:
+            print('Sequence alignment software is not specified, MAFFT will be used for sequence alignment')
+
+        try:
+            if str(self.seq).upper() not in ["CDS", "PEP", "CODON", "CODON1", "CODON2"]:
+                print(f'The seq: {self.seq} is not recognized, and CDS will be used')
+                self.seq = 'cds'
+        except AttributeError:
+            print('The seq is not specified, and CDS will be used')
 
         self.check_software()  # 运行时先检查软件是否可用
-        self.out_path = os.path.abspath(self.out_path)
 
     def get_config(self, opt_cfg, opt):
         cfg_parser = ConfigParser()
@@ -134,8 +171,8 @@ class RunCmd():
 
     def format_and_trans(self, in_file):
         """The original CDS sequences provided by the user will be formatted, with gene IDs translated into protein
-        sequences. The new IDs will be in the format of species name (basename infile)_wy_raw_id. Subsequently,
-        the gene tree will be constructed using the species name preserved as the gene ID, using _wy_ as a separator.
+        sequences. The new IDs will be in the format of species name (basename infile)|raw_id. Subsequently,
+        the gene tree will be constructed using the species name preserved as the gene ID, using | as a separator.
         This facilitates the merging of gene trees into a species tree."""
         base_name = os.path.splitext(os.path.split(in_file)[1])[0]
         cds_fm_out = f"{self.out_path}/01_cds_format/{base_name}.cds"
@@ -144,7 +181,7 @@ class RunCmd():
         pep_out = open(pep_out, 'w')
         for line in SeqIO.parse(in_file, 'fasta'):
             raw_id = line.id
-            new_id = f'>{base_name}_wy_{raw_id}'
+            new_id = f'>{base_name}|{raw_id}'
             cds = re.sub(r'[^ATCGUatcgu]', 'N', str(line.seq))  # 将非法字符替换为N
             pep = line.seq.translate(table="Standard")
             print(f'{new_id}\n{cds}', file=cds_fm_out)
@@ -165,7 +202,7 @@ class RunCmd():
         with open(infile, 'r') as f1, open(outfile, 'w') as f2:
             for line in f1:
                 if line.startswith('>'):
-                    species_name = line.split('_wy_')[0][1:]
+                    species_name = line.split('|')[0][1:]
                     f2.write('>' + species_name + '\n')
                 else:
                     f2.write(line)
@@ -220,16 +257,18 @@ class RunCmd():
 
     def aln(self, infile, outfile):
         """Sequence alignment"""
-        if str(self.aln_software).upper() == 'MUSCLE':
+        if str(self.aln_software) == 'muscle':
             run = '{} -align {} -output {}'.format(self.muscle, infile, outfile)
-        else:
+        elif str(self.aln_software) == 'mafft':
             run = '{} {} > {}'.format(self.mafft, infile, outfile)
+        elif str(self.aln_software) == 'clustalw':
+            run = f'{self.clustalw} -INFILE={infile} -OUTFILE={outfile} -OUTPUT=FASTA'
         status = self.run_command(run)
         return status
 
     def aln_codon(self, alnfile, cdsfile, out):
         """Convert protein sequence alignment to codon"""
-        run = f"perl {self.pal2nal} {alnfile} {cdsfile} -output fasta >{out}"
+        run = f"{self.pal2nal} {alnfile} {cdsfile} -output fasta >{out}"
         # 提取密码子第几位 codon:不移除，codon1保留1，2位，condon2：保留第三位
         return self.run_command(run)
 
@@ -266,15 +305,19 @@ class RunCmd():
         if os.path.isfile(infile) and os.path.getsize(infile) == 0:
             pass
         else:
-            if self.tree_software.upper() == 'IQTREE':
+            if self.tree_software == 'iqtree':
                 run = f'{self.iqtree} -s {infile} -pre {outpath}/{basename} -nt {thread} -m MFP --quiet -B 1000 -redo'
-            elif self.tree_software.upper() == 'FASTTREE':
+            elif self.tree_software == 'fasttree':
                 run = f'{self.fasttree} {infile} > {outpath}/{basename}.tre'
-            else:
-                if self.seq.upper() in ['CDS', 'CODON']:
+            elif self.tree_software == 'raxml':
+                if self.seq in ['cds', 'codon', 'codon1', 'codon2']:
                     run = f'{self.raxml} -f a -x 12345 -p 12345 -# 100 -m GTRGAMMA -s {infile} -n {basename} -T {thread} -w {outpath}'
                 else:
                     run = f'{self.raxml} -f a -x 12345 -p 12345 -# 100 -m PROTGAMMAJTT -s {infile} -n {basename} -T {thread} -w {outpath}'
+            elif self.tree_software == 'treebest':
+                run = f'{self.treebest} nj -b 1000  {infile} >{outpath}/{basename}_treebest.NHX'
+            elif self.tree_software == 'phyml':
+                run = f'{self.phyml} -i {infile} -b 100 -m HKY85 -f m -v e -a e -o tlr'
             self.run_command(run)
 
     def get_genetree(self, infile):
@@ -319,7 +362,7 @@ class RunCmd():
                 """to codon， len of cds is not mul of 3. codon file is empty, trimal failed"""
                 os.remove(codon_seq)
             else:
-                #在这里筛选codon位点
+                # 在这里筛选codon位点
                 codon_seq_select = f"{self.out_path}/06_aln/01_aln/{basename}_{self.seq}.aln"
                 if self.seq.upper() in ['CODON1', 'CODON2']:
                     self.codon_position_select(codon_seq, codon_seq_select, self.seq.lower())
@@ -354,6 +397,7 @@ class RunCmd():
 
     def run_genetree_mul(self):
         """Multiprocess construct trees"""
+        """一开始只考虑做lcn，这个脚本中很多函数不太好利用"""
         OG_list = self.get_infile_list(f"{self.out_path}/04_OG/")
         # 删除过去跑出的树及比对后后序列，防止续跑时前面的结果影响
         dir_list = ['05_seq/', '06_aln/01_aln', '06_aln/02_trim', '06_aln/03_trim_rename',
@@ -406,7 +450,7 @@ class RunCmd():
         """Construct Coalescence tree"""
         merge_gene_trees = self.merge_gene_trees(f"{self.out_path}/07_tree/01_coatree", f"{self.out_path}/08_result",
                                                  self.tree_software)
-        #保留多拷贝基因做树，暂时不考虑这里了
+        # 保留多拷贝基因做树，暂时不考虑这里了
         if self.retain_multi_copy.upper() == 'F':
             run = f'java -jar {self.astral} -i {merge_gene_trees} -r 100 -o ' \
                   f'{self.out_path}/08_result/coalescent-based_{self.seq.lower()}_{self.tree_software}.nwk'
@@ -436,7 +480,7 @@ class RunCmd():
                 seq_tmp = ''
                 # id_in_genelist = False
                 for line in SeqIO.parse(OG, 'fasta'):
-                    gene_id = line.id.split('_wy_')[0][0:]
+                    gene_id = line.id.split('|')[0][0:]
                     # print(id)
                     seq = line.seq
                     seq_len = len(seq)
