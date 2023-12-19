@@ -1,30 +1,28 @@
 import os
 import multiprocessing
-import sys
 import shutil
 
-from configparser import ConfigParser
-
-from treetool import run
+from treetool.script import RunCmd
 
 
-class HMM_OG:
+class HMM_OG(RunCmd):
     def __init__(self):
-        self.thread = 10
-        opt = self.get_config()
-        for k, v in opt.items():
-            setattr(self, str(k), v)
+        super().__init__()
 
         self.raw_path = f'{self.in_path}'
         self.in_path = f'{self.out_path}/03_hmm_out'
-        self.out_path = f'{self.out_path}/04_OG'
+        self.og_out_path = f'{self.out_path}/04_OG'
 
         # 防止每次运行生成的OGs扰乱本次结果，每次都将原OGs删掉再筛选OGs
         try:
-            shutil.rmtree(f'{self.out_path}')
+            shutil.rmtree(f'{self.og_out_path}')
         except FileNotFoundError:
             pass
-        os.mkdir(f'{self.out_path}')
+        try:
+            os.remove(f'{self.out_path}/map.txt')
+        except FileNotFoundError:
+            pass
+        os.mkdir(f'{self.og_out_path}')
 
         try:
             cover = int(self.cover)
@@ -35,14 +33,6 @@ class HMM_OG:
             copy_number = int(self.copy_number)
         except AttributeError:
             self.copy_number = 1
-
-    def get_config(self):
-        opt_cfg = run.get_parser()[0]
-        cfg_parser = ConfigParser()
-        # read options
-        cfg_parser.read(opt_cfg)
-        opt = dict(cfg_parser.items('lcn_opt'))
-        return opt
 
     def get_file_paths(self):
         """这里输入文件改成与原输入文件对应，这样就可以在原输入目录中增删文件实现续跑"""
@@ -133,7 +123,7 @@ class HMM_OG:
                 if k == busco_id:
                     tmp.append(v)
         if len(tmp) >= int(self.cover):
-            out_file = f'{self.out_path}/busco{busco_id}'
+            out_file = f'{self.og_out_path}/busco{busco_id}'
             with open(out_file, 'w') as f:
                 for i in tmp:
                     print(i, file=f)
@@ -146,10 +136,11 @@ class HMM_OG:
         with multiprocessing.Pool(int(self.thread)) as pool:
             pool.starmap(self.save_best_match_to_file, [(busco_id, best_match_list) for busco_id in all_busco_id])
 
-    # 每个OG保留物种所有基因，可以使用Astral-pro（https://github.com/chaoszhang/A-pro）合并基因树，但是不能做串联树
-    #暂时不考虑这里
     def run_hmm2OG_multi_copy(self):
         # 把所有结果转换为一个列表result：[{OG1:sp1:[gene1, gene2],sp2:[gene1, gene2]},OG2:{……},OG3:{……}]
+        # 每个OG保留物种所有拷贝，可以使用Astral-pro（https://github.com/chaoszhang/A-pro）合并基因树，但是不能做串联树
+        # 这一步筛选出的OG与单拷贝模式有所区别，单拷贝模式是保留busco与gene互相最佳匹配，
+        # 单拷贝模式中某一物种拷贝数大于设置的参数是即将改物种删掉，这个模式中这种情况则是将整个OG删掉，所以晒出的OG可能会少于上过模式
         all_busco_list = self.get_all_busco_id()
         result = []
         for busco_id in all_busco_list:
@@ -172,6 +163,7 @@ class HMM_OG:
             result.append(OG)
         # print(result)
         # 根据cover进行筛选OG至04_OG目录并保留result中符合条件的结果
+        # 这里可以多进程，但是单进程跑也就十几分钟懒得改了
         for og in result:
             for k, v in og.items():
                 cover = len(og[k])
@@ -179,11 +171,14 @@ class HMM_OG:
                     # print(k)
                     # print(v.keys())
                     result.remove(og)
-                    out_OG = f'{self.out_path}/busco{k}'
-                    with open(out_OG, 'w') as f:
+                    out_OG = f'{self.og_out_path}/busco{k}'
+                    map_out = f'{self.out_path}/map.txt'
+                    with open(out_OG, 'w') as f1, open(map_out, 'a') as f2:
                         for gene in v.values():
                             for gene in gene:
-                                species_name = gene.split('_wy_')[0][0:]
-                                print(gene, file=f)  # 保留合格的至04_OG目录
-                                print(f'{gene}\t{species_name}')  # 保留基因及其对应物种名，后续astral-pro合并需要用到
+                                species_name = gene.split('|')[0][0:]
+                                print(gene, file=f1)  # 保留合格的至04_OG目录
+                                # 保留基因及其对应物种名，后续astral-pro合并需要用到
+                                ### astral-pro直接合并基因树问题太多了……
+                                print(f'{gene}\t{species_name}', file=f2)
         return result

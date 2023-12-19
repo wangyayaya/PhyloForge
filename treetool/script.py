@@ -6,7 +6,6 @@ import shutil
 import sys
 import glob
 import warnings
-
 from configparser import ConfigParser
 from collections import OrderedDict
 from Bio import SeqIO
@@ -41,7 +40,6 @@ class RunCmd:
             self.opt = self.get_config(opt_cfg, 'organelle_opt')
         elif tree == 'snp':
             self.opt = self.get_config(opt_cfg, 'snp_opt')
-            self.tree_software = 'treebest'
         elif tree == 'whole_genome':
             self.opt = self.get_config(opt_cfg, 'whole_genome_opt')
         elif tree == 'sv':
@@ -50,6 +48,10 @@ class RunCmd:
         elif tree == 'gene':
             self.opt = self.get_config(opt_cfg, 'gene_opt')
             self.retain_multi_copy = 'T'
+        elif tree == 'mul':
+            self.opt = self.get_config(opt_cfg, 'lcn_opt_m')
+            self.retain_multi_copy = 'T'
+            self.coa_con = 0
 
         self.software_path = self.get_soft_path()
         for k, v in self.software_path.items():
@@ -181,7 +183,7 @@ class RunCmd:
         pep_out = open(pep_out, 'w')
         for line in SeqIO.parse(in_file, 'fasta'):
             raw_id = line.id
-            new_id = f'>{base_name}|{raw_id}'
+            new_id = f'>{base_name}|{raw_id}'.replace(':', '_')  # 基因ID中不能有冒号
             cds = re.sub(r'[^ATCGUatcgu]', 'N', str(line.seq))  # 将非法字符替换为N
             pep = line.seq.translate(table="Standard")
             print(f'{new_id}\n{cds}', file=cds_fm_out)
@@ -455,10 +457,11 @@ class RunCmd:
             run = f'java -jar {self.astral} -i {merge_gene_trees} -r 100 -o ' \
                   f'{self.out_path}/08_result/coalescent-based_{self.seq.lower()}_{self.tree_software}.nwk'
         else:
-            absp_astral = os.path.abspath(os.path.dirname(os.path.dirname(self.astral)))
+            absp_astral = os.path.abspath(os.path.dirname(self.astral_pro))
             astrallib = os.path.join(absp_astral, 'lib')
-            run = f'java -Djava.library.path={astrallib} -jar {self.astral} -i {merge_gene_trees} ' \
-                  f'-o {self.out_path}/08_result/coalescent-based_{self.seq.lower()}_{self.tree_software}_mc.nwk'
+            run = f'java -Djava.library.path={astrallib} -jar {self.astral_pro} -i {merge_gene_trees} ' \
+                  f'-o {self.out_path}/08_result/coalescent-based_{self.seq.lower()}_{self.tree_software}_mcl.nwk ' \
+                  f'-a {self.out_path}/map.txt'
         return self.run_command(run)
 
     def get_super_gene(self):

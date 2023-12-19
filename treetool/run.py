@@ -8,6 +8,7 @@ import sys
 import configparser
 import treetool
 
+
 def get_parser():
     parser = argparse.ArgumentParser(description=f'''
     TreeTool: A tool for multiple phylogenetic analyses
@@ -15,6 +16,8 @@ def get_parser():
 
     parser.add_argument("-l", "--lcn", type=str, dest='lcn_tree',
                         help="construct phylogenetic tree based on low-copy nuclear genes ")
+    parser.add_argument("-m", "--mul", type=str, dest='mul_tree',
+                        help="construct phylogenetic tree based on low-copy nuclear genes (retain multiple copies)")
     parser.add_argument("-s", "--snp", type=str, dest='snp_tree', help="construct phylogenetic tree based on SNP sites")
     parser.add_argument("-S", "--sv", type=str, dest='sv_tree',
                         help="construct phylogenetic tree based on SV (structural variation)")
@@ -48,6 +51,10 @@ def get_parser():
     elif args.lcn_tree:
         opt_cfg = args.lcn_tree
         tree = 'lcn'
+
+    elif args.mul_tree:
+        opt_cfg = args.mul_tree
+        tree = 'mul'
 
     elif args.snp_tree:
         opt_cfg = args.snp_tree
@@ -90,7 +97,7 @@ def get_parser():
 
 def main():
     tree = get_parser()[1]
-    if tree == 'lcn':
+    if tree == 'lcn' or tree == 'mul':
         import treetool.lcntree
         treetool.lcntree.LcnTree().lcn_tree()
     elif tree == 'snp':
@@ -109,4 +116,4 @@ def main():
         import treetool.genetree
         treetool.genetree.GeneTree().run_gene_tree()
     else:
-        sys.exit()
+        exit()

@@ -25,9 +25,9 @@ class GeneTree(RunCmd):
         for d in all_dir:
             try:
                 shutil.rmtree(f'{self.out_path}/{d}')
-            except OSError:
-                pass
             except FileNotFoundError:
+                pass
+            except OSError:
                 pass
         for d in out_dir:
             os.makedirs(f'{self.out_path}/{d}')

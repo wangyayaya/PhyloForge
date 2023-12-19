@@ -9,14 +9,21 @@ import sys
 
 from treetool import script, hmm2OG
 from treetool.script import RunCmd
+
 cmd = script.RunCmd()
 
 
 class LcnTree(RunCmd):
     def __init__(self):
-        super().__init__()
         self.mode = 0
         self.coa_con = 0
+        super().__init__()
+
+    def HMM_OG(self):
+        if self.retain_multi_copy == 'F':
+            hmm2OG.HMM_OG().run_hmm2OG()
+        else:
+            hmm2OG.HMM_OG().run_hmm2OG_multi_copy()
 
     def check(self):
         global n
@@ -48,7 +55,7 @@ class LcnTree(RunCmd):
 
         try:
             n = int(self.mode)
-            if n not in [0, 1, 2, 3, 4]:
+            if n not in [0, 1, 2, 3]:
                 print('mode should be 0, 1, 2 or 3, please check it')
                 sys.exit()
         except ValueError:
@@ -59,7 +66,6 @@ class LcnTree(RunCmd):
 
         return n
 
-
     def run_mode0(self):
         """cds to species tree"""
         statuss = cmd.run_hmmscan_pl()
@@ -68,7 +74,7 @@ class LcnTree(RunCmd):
             print("The hmmsearch program failed to run")
             sys.exit(1)
         else:
-            hmm2OG.HMM_OG().run_hmm2OG()
+            self.HMM_OG()
             if int(self.coa_con) == 0:
                 cmd.run_genetree_mul()
                 cmd.run_astral()
@@ -87,10 +93,10 @@ class LcnTree(RunCmd):
             print("The hmmsearch program failed to run")
             sys.exit(1)
         else:
-            hmm2OG.HMM_OG().run_hmm2OG()
+            self.HMM_OG()
 
     def run_mode2(self):
-        hmm2OG.HMM_OG().run_hmm2OG()
+        self.HMM_OG()
 
     def run_mode3(self):
         """OG to tree"""
@@ -115,4 +121,4 @@ class LcnTree(RunCmd):
         elif n == 3:
             self.run_mode3()
         else:
-            hmm2OG.HMM_OG().run_hmm2OG_multi_copy()
+            sys.exit()
