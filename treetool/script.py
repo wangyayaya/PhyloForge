@@ -458,9 +458,9 @@ class RunCmd:
         """Construct Coalescence tree"""
         merge_gene_trees = self.merge_gene_trees(f"{self.out_path}/07_tree/01_coatree", f"{self.out_path}/08_result",
                                                  self.tree_software)
-        # 保留多拷贝基因做树，暂时不考虑这里了
+
         if self.retain_multi_copy.upper() == 'F':
-            run = f'java -jar {self.astral} -i {merge_gene_trees} -r 100 -o ' \
+            run = f'{self.astral} -i {merge_gene_trees} -r 100 -o ' \
                   f'{self.out_path}/08_result/coalescent-based_{self.seq.lower()}_{self.tree_software}.nwk'
         else:
             absp_astral = os.path.abspath(os.path.dirname(self.astral_pro))

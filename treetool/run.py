@@ -26,15 +26,15 @@ def get_parser():
     parser.add_argument("-w", "--whole_genome", type=str, dest='whole_genome_tree',
                         help="construct phylogenetic tree based on organelle whole genome sequence.")
     parser.add_argument("-g", "--gene", type=str, dest='gene_tree', help="construct gene tree")
-    parser.add_argument("-grc", action="store_true",
-                        help="get the run configuration file: treetool -grc >run.cfg")
+    parser.add_argument("-c", action="store_true",
+                        help="get the run configuration file: treetool -c >run.cfg")
     parser.add_argument("-gsc", action="store_true",
                         help="get the software configuration file: treetool -gsc >software.cfg")
     parser.add_argument("-sc", help="perform software configuration: treetool -sc software.cfg")
     parser.add_argument("-v", "--version", action="version", version="treetool 测试版")
     args = parser.parse_args()
 
-    if args.grc:
+    if args.c:
         cfg = os.path.join(treetool.__path__[0], "cfg/run.config")
         with open(cfg) as f:
             for line in f.readlines():

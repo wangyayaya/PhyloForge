@@ -29,46 +29,6 @@ $ hmmpress embryophyta_odb10.hmm
 $ realpath embryophyta_odb10.hmm
 ```
 
-#### 2.依赖软件
-
-1）hmmer软件，安装该软件后，主要使用hmmpress命令和hmmscan命令。目前大部分window版本的hmmer软件不能识别我们需要的hmm文件。**必需**
-
-2）序列比对软件，可选择mafft或muscle，默认为mafft
-
-3）序列修剪软件：trimal，**必需**
-
-4）构树软件：可选择fasttree、iqtree或raxmal，默认为raxmal，最好是多线程版本，否则线程数设置不起作用
-
-5）pal2nal，将蛋白比对序列转换为codon后做树，在配置文件中seq=codon时，需配置该软件
-
-6）基因树合并软件：astral，**必需**
-
-#### 3.设置软件配置文件
-
-首先配置相关软件，可运行treetool -gsc >software.config生成软件配置文件
-
-software.config：
-
-```
-[software]
-hmmscan=hmmscan
-mafft=mafft
-muscle=muscle
-trimal=trimal
-raxml=raxmlHPC-PTHREADS
-iqtree=iqtree
-fasttree=fasttree
-astral=/opt/service/ASTRAL/astral.5.7.3.jar
-pal2nal=/opt/service/miniconda3/envs/r4_py37_env/bin/pal2nal.pl
-```
-
-**注意事项：**
-**#软件在环境变量中直接写调用该软件时的软件名即可，否则需要绝对/相对路径**
-**#[lcn_opt]选项需要用到的软件必需要有对应软件，如[lcn_opt]中序列比对软件选择mafft，则必需配置mafft软件路径，muscle就无需配置**
-**#如果选择使用codon序列构树，则软件需配置pal2nal软件**
-
-运行treetool  -sc software.config命令配置软件
-
 #### 4.运行参数配置说明
 
 可通过treetool -grc >run.config获取配置文件
@@ -129,15 +89,16 @@ out/
 
 在1.1单基因构树模式中，当copy_number参数设置大于1时，某一物种在某一OG下可能会有多个拷贝，单基因模式会根据hmmscan搜索结果，根据e值保留基因与busco id双向最佳匹配的一个基因。这里我们开发了多基因模式，即将有多个拷贝的基因全部保留，使用astral-pro(https://github.com/chaoszhang/A-pro)合并基因树，该模式只能构建并联树
 
-所有设置同1.1，除了软件配置需要配置astral-pro
+astral-pro软件需要自己配置，需要配置astral-pro
 
 software.config：
 
 ```
 [software]
 astral_pro=~/software/A-pro-master/ASTRAL-MP/astral.1.1.6.jar
-……
 ```
+
+运行
 
 run.config参数同1.1:
 
