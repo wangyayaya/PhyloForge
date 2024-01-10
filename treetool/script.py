@@ -66,7 +66,7 @@ class RunCmd:
             os.makedirs(f"{self.out_path}")
             self.out_path = os.path.abspath(f"{self.out_path}")
         except OSError:
-            pass
+            self.out_path = os.path.abspath(f"{self.out_path}")
 
         try:
             if int(self.thread) <= 1:
@@ -182,12 +182,17 @@ class RunCmd:
         pep_out = f"{self.out_path}/02_pep/{base_name}.pep"
         pep_out = open(pep_out, 'w')
         for line in SeqIO.parse(in_file, 'fasta'):
-            raw_id = line.id
-            new_id = f'>{base_name}|{raw_id}'.replace(':', '_')  # 基因ID中不能有冒号
-            cds = re.sub(r'[^ATCGUatcgu]', 'N', str(line.seq))  # 将非法字符替换为N
-            pep = line.seq.translate(table="Standard")
-            print(f'{new_id}\n{cds}', file=cds_fm_out)
-            print(f'{new_id}\n{pep}', file=pep_out)
+            try:
+                raw_id = line.id
+                new_id = f'>{base_name}|{raw_id}'.replace(':', '_')  # 基因ID中不能有冒号
+                cds = re.sub(r'[^ATCGUatcgu]', 'N', str(line.seq))  # 将非法字符替换为N
+                pep = line.seq.translate(table="Standard")
+                print(f'{new_id}\n{cds}', file=cds_fm_out)
+                print(f'{new_id}\n{pep}', file=pep_out)
+            except Exception:
+                print(f"Please check the input file: {in_file}, the sequence may have abnormal characters ")
+                pass
+
 
     # 多进程
     def run_format_and_trans(self):
@@ -215,7 +220,8 @@ class RunCmd:
             return 0, output.decode()
         except subprocess.CalledProcessError as e:
             print(e)
-            return e.returncode
+            sys.exit(e.returncode)
+
 
     def HMMscan(self, infile):
         """Run hmmscan"""
@@ -496,7 +502,9 @@ class RunCmd:
                         seq_tmp = '-' * seq_len
                         # break
                 sp_seq += seq_tmp
-            print(f'>{sp}\n{sp_seq}', file=result)
+            seq_check = sp_seq.replace('-', '')
+            if len(seq_check) > 0:
+                print(f'>{sp}\n{sp_seq}', file=result)
             # print(f'>{sp}\n{sp_seq}')
         return supergene, seq_type
 

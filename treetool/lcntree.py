@@ -70,7 +70,7 @@ class LcnTree(RunCmd):
         """cds to species tree"""
         statuss = cmd.run_hmmscan_pl()
         # statuss = [0]
-        if 1 in statuss:
+        if any(status != 0 for status in statuss):
             print("The hmmsearch program failed to run")
             sys.exit(1)
         else:
@@ -89,7 +89,7 @@ class LcnTree(RunCmd):
     def run_mode1(self):
         """cds to SOG/LOG"""
         statuss = cmd.run_hmmscan_pl()
-        if 1 in statuss:
+        if any(status != 0 for status in statuss):
             print("The hmmsearch program failed to run")
             sys.exit(1)
         else:

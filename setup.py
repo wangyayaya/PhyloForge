@@ -3,8 +3,8 @@
 
 from setuptools import find_packages, setup
 
-with open("README.md", "r", encoding='utf-8') as fh:
-    long_description = fh.read()
+with open("README.md", "r", encoding='utf-8') as fr:
+    long_description = fr.read()
 
 required = ['biopython']
 
@@ -13,7 +13,7 @@ setup(
     version="1.0.0",
     author="Ya Wang",
     author_email="1552082076@qq.com",
-    description="A pipeline that can perform various phylogenetic analyses based on multiple types of data",
+    description="PhyloForge: Unifying micro and macro evolution with comprehensive genomic signals",
     license="BSD License",
     long_description=long_description,
     long_description_content_type="text/markdown",

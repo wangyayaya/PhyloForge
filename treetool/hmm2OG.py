@@ -82,7 +82,6 @@ class HMM_OG(RunCmd):
                         gene_list[gene_id] = {}
                     gene_list[gene_id][busco_id] = e_true
         # print(gene_list)
-        # print(busco_list)
         for gene_id, busco_dict in gene_list.items():
             e_tmp = 1
             for busco_id, e_true in busco_dict.items():

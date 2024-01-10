@@ -5,23 +5,14 @@
   </component>
   <component name="ChangeListManager">
     <list default="true" id="33bbcf0c-5adb-4d80-8689-b09dc53c9914" name="Changes" comment="">
-      <change afterPath="$PROJECT_DIR$/get_p.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/.idea/.name" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/.name" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/__init__.py" beforeDir="false" afterPath="$PROJECT_DIR$/__init__.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/cfg/run.config" beforeDir="false" afterPath="$PROJECT_DIR$/cfg/run.config" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/cfg/software.ini" beforeDir="false" afterPath="$PROJECT_DIR$/cfg/software.ini" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../README.md" beforeDir="false" afterPath="$PROJECT_DIR$/../README.md" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../build.sh" beforeDir="false" afterPath="$PROJECT_DIR$/../build.sh" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../meta.yaml" beforeDir="false" afterPath="$PROJECT_DIR$/../meta.yaml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../setup.py" beforeDir="false" afterPath="$PROJECT_DIR$/../setup.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/hmm2OG.py" beforeDir="false" afterPath="$PROJECT_DIR$/hmm2OG.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/mode.py" beforeDir="false" afterPath="$PROJECT_DIR$/mode.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/run.py" beforeDir="false" afterPath="$PROJECT_DIR$/run.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/lcntree.py" beforeDir="false" afterPath="$PROJECT_DIR$/lcntree.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/script.py" beforeDir="false" afterPath="$PROJECT_DIR$/script.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/test.py" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/../o" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/../run.config" beforeDir="false" afterPath="$PROJECT_DIR$/../run.config" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/../snptree/__init__.py" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/../snptree/cfg/__init__.py" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/../snptree/cfg/run.cfg" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/../snptree/vcf2seq.py" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/wholegenometree.py" beforeDir="false" afterPath="$PROJECT_DIR$/wholegenometree.py" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />

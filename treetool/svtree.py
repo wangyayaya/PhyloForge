@@ -44,33 +44,42 @@ class SvTree(RunCmd):
                 pass
             elif line.strip():
                 fields = line.strip().split()
-                sv_type = fields[4]
-                if sv_type == '<DEL>':
+                # sv_type = fields[4]  符号表示法（Symbolic notation）中第四列即为SV类型
+                sv_info = fields[7]
+                pairs = sv_info.split(';')
+                sv_type = None
+                for pair in pairs:
+                    key, value = pair.split('=')
+                    if key == 'SVTYPE':
+                        sv_type = value
+                        break
+                if sv_type is None or sv_type not in ['DEL', 'INS']:
+                    continue
+                if sv_type == 'DEL':
                     alleles = [1, 0]
-                elif sv_type == '<INS>':
+                elif sv_type == 'INS':
                     alleles = [0, 1]
                 # print(alleles)
                 # 这里好恶心
                 # 虽然很恶心，但是改了又报错或者转换的结果不对
                 # 恶心就恶心吧，不改了
-                Hom = False
+                Hom = True
                 for i, alleles_indices in enumerate(fields[9:], start=0):
                     if alleles_indices.split(":")[0]:
                         alleles_indices = alleles_indices.split(":")[0]
                         # print(alleles_indices)
-                        try:
-                            if '/' in alleles_indices:
-                                allele1 = alleles_indices.split('/')[0]
-                                allele2 = alleles_indices.split('/')[1]
-                            elif '|' in alleles_indices:
-                                allele1 = alleles_indices.split('|')[0]
-                                allele2 = alleles_indices.split('|')[1]
-                            base1 = alleles[int(allele1)]
-                            base2 = alleles[int(allele2)]
-                        except ValueError:
-                            base1 = base2 = '.'
-                        if allele1 == allele2:
-                            Hom = True
+
+                        if '/' in alleles_indices:
+                            allele1 = alleles_indices.split('/')[0]
+                            allele2 = alleles_indices.split('/')[1]
+                        elif '|' in alleles_indices:
+                            allele1 = alleles_indices.split('|')[0]
+                            allele2 = alleles_indices.split('|')[1]
+
+                        if allele1 != allele2:
+                            # 只要有一个样本在该位点不是纯和突变，该位点即不是纯和
+                            Hom = False
+                            break
 
                 if Hom:
                     for i, alleles_indices in enumerate(fields[9:], start=0):
@@ -99,8 +108,14 @@ class SvTree(RunCmd):
                             elif '|' in alleles_indices:
                                 allele1 = alleles_indices.split('|')[0]
                                 allele2 = alleles_indices.split('|')[1]
-                            base1 = alleles[int(allele1)]
-                            base2 = alleles[int(allele2)]
+                            try:
+                                base1 = alleles[int(allele1)]
+                            except ValueError:
+                                base1 = '.'
+                            try:
+                                base2 = alleles[int(allele2)]
+                            except ValueError:
+                                base2 = '.'
                         seqs[i] += str(base1)
                         seqs[i] += str(base2)
 

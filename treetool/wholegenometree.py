@@ -44,7 +44,7 @@ class WholeGenomeTree(RunCmd):
         elif str(self.aln_software) == 'mafft':
             run = '{} --thread {} {} > {} 2>/dev/null'.format(self.mafft, self.thread, infile, outfile)
         elif str(self.aln_software) == 'clustalw':
-            run = f'{self.aln_software} -INFILE={infile} -OUTFILE={outfile} -OUTPUT=FASTA'
+            run = f'{self.clustalw} -INFILE={infile} -OUTFILE={outfile} -OUTPUT=FASTA'
         status = cmd.run_command(run)
         return status
 
