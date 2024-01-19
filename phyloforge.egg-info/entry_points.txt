@@ -1,2 +1,0 @@
-[console_scripts]
-phyloforge = treetool.run:main
