@@ -1,5 +1,8 @@
 """snp vcf to tree"""
+import re
 import os
+from Bio import SeqIO
+import multiprocessing
 from treetool import script
 from treetool.script import RunCmd
 cmd = script.RunCmd()
@@ -8,11 +11,17 @@ cmd = script.RunCmd()
 class VcfTree(RunCmd):
     def __init__(self):
         super().__init__()
+        try:
+            os.makedirs(f"{self.out_path}/working_dir")
+            self.working_dir = os.path.abspath(f"{self.out_path}/working_dir")
+        except OSError:
+            self.working_dir = os.path.abspath(f"{self.out_path}/working_dir")
 
     def generate_ambiguous_code(self, base1, base2):
         # 非纯和突变碱基的歧义码IUPAC Ambiguity Codes，类型没有vcf2phylip的多
         # 但运行结果检查了一下和那个脚本是一样的，因为只考虑单碱基突变的话就只有下面这几种突变
-        # 一个自己的想法，如果一个位点参考是A，突变是T，那么存在杂合突变时是否可以将0/0转换为AA，1/1转换为TT，而0/1转换为AT，感觉可行
+        # 一个自己的想法，如果一个位点参考是A，突变是T，那么存在杂合突变时是否可以将0/0转换为AA，1/1转换为TT，而0/1转换为AT，感觉可行.
+        # SNP感觉几乎每一个位点都会有杂合，所以这样无形中相当于将数据量增大了一倍！！！
         base1 = base1.upper()
         base2 = base2.upper()
         # 这里是获得的基因型，ATGC*.,"."是缺失的情况
@@ -49,85 +58,113 @@ class VcfTree(RunCmd):
         else:
             return "N"
 
-    def convert_vcf_to_seq(self, vcf_file, out_file, format, LF):
-        if LF.upper().startswith("F"):
-            LF = False
-        else:
-            LF = True
-        # Open the input vcf file.
-        with open(vcf_file) as vcf_file:
-            lines = vcf_file.readlines()
-        for line in lines:
-            if line.startswith("#CHROM"):
-                sample_name = line.strip().split()[9:]
-                # print(sample_name)
-                seqs = [""] * len(sample_name)
-                # print(seqs)
-            elif line.startswith("#"):
-                pass
-            elif line.strip():
-                fields = line.strip().split()
-                ref = fields[3]
-                alleles = [ref] + fields[4].split(",")
-                # print(alleles)
-                # 这里只考虑每个位点只涉及单个碱基突变的情况，多个碱基突变的话就很难考虑那个歧义码。之前写的脚本是以最长那一个突变为准
-                # 不考虑歧义码，其它缺失的用‘-’来补齐，如果同时考虑歧义码及多个碱基，没办法转换
-                base_len_le_1 = True
-                for base in alleles:
-                    base_len = len(base)
-                    if base_len > 1:
-                        base_len_le_1 = False
-                        break
-                if base_len_le_1:
-                    for i, alleles_indices in enumerate(fields[9:], start=0):
-                        # i是转化后sample_name列表中物种名的索引
-                        if alleles_indices.split(":")[0]:
-                            alleles_indices = alleles_indices.split(":")[0]
-                            try:
-                                if '/' in alleles_indices:
-                                    allele1 = alleles_indices.split('/')[0]
-                                    allele2 = alleles_indices.split('/')[1]
-                                elif '|' in alleles_indices:
-                                    allele1 = alleles_indices.split('|')[0]
-                                    allele2 = alleles_indices.split('|')[1]
-                                base1 = alleles[int(allele1)]
-                                base2 = alleles[int(allele2)]
-                            except ValueError:
-                                base1 = base2 = '.'
-                            # print(base1, base2)
-                            base = self.generate_ambiguous_code(base1, base2)
-                            # print(base)
-                            seqs[i] += base
-        # for i in range(len(sample_name)):
-        #   print(f">{sample_name[i]}\n{seqs[i]}")
+    def cutFile(self, vcf_file, num, out_path):
+        """VCF文件过大时，将文件拆分多个小文件"""
+        with open(vcf_file) as f:
+            for line in f:
+                if line.startswith("#CHROM"):
+                    header = line
+                    break
 
-        if format == 'phylip':
-            # phy序列不换行
-            phylip_str = f"{len(sample_name)} {len(seqs[0])}\n"
-            for i in range(len(sample_name)):
-                phylip_str += f"{sample_name[i].ljust(10)} {seqs[i]}\n"
-            out_str = phylip_str
+        sourceFileData = open(vcf_file, 'r', encoding='utf-8')
+        ListOfLine = [line for line in sourceFileData.read().splitlines() if not line.startswith("#")]
+        n = len(ListOfLine)
+        p = n // num + 1
+        split_files = []
+        for i in range(num):
+            split_file = os.path.join(out_path, os.path.basename(os.path.splitext(vcf_file)[0]) + str(i) +
+                                      os.path.splitext(vcf_file)[-1])
+            split_files.append(split_file)
+            # print(split_file)
+            destFileData = open(split_file, "w", encoding='utf-8')
+            destFileData.write(header)
+            if (i == num - 1):
+                for line in ListOfLine[i * p:]:
+                    destFileData.write(line + '\n')
+            else:
+                for line in ListOfLine[i * p:(i + 1) * p]:
+                    destFileData.write(line + '\n')
+            destFileData.close()
+        return split_files
 
-        elif format == 'fasta' and LF:
-            # fa格式60个字符换一行
-            fasta_str_LF = ""
-            for i in range(len(sample_name)):
-                fasta_str_LF += f">{sample_name[i]}\n"
-                seq = seqs[i]
-                while len(seq) > 0:
-                    fasta_str_LF += seq[:60] + "\n"
-                    seq = seq[60:]  # 每一次删掉序列前60个碱基
-            out_str = fasta_str_LF
+    def convert_vcf_to_seq(self, vcf_file):
+        with open(vcf_file) as f:
+            for line in f:
+                if line.startswith("#CHROM"):
+                    sample_name = line.strip().split()[9:]
+                    # print(sample_name)
+                    seqs = [""] * len(sample_name)
+                    # print(seqs)
+                elif line.startswith("#"):
+                    pass
+                elif line.strip():
+                    fields = line.strip().split()
+                    ref = fields[3]
+                    alleles = [ref] + fields[4].split(",")
+                    # print(alleles)
+                    # 这里只考虑每个位点只涉及单个碱基突变的情况，多个碱基突变的话就很难考虑那个歧义码。之前写的脚本是以最长那一个突变为准
+                    # 不考虑歧义码，其它缺失的用‘-’来补齐，如果同时考虑歧义码及多个碱基，没办法转换
+                    base_len_le_1 = True
+                    for base in alleles:
+                        base_len = len(base)
+                        if base_len > 1:
+                            base_len_le_1 = False
+                            break
+                    if base_len_le_1:
+                        for i, alleles_indices in enumerate(fields[9:], start=0):
+                            # i是转化后sample_name列表中物种名的索引
+                            if alleles_indices.split(":")[0]:
+                                alleles_indices = alleles_indices.split(":")[0]
+                                try:
+                                    allele1, allele2 = map(int, re.split('/|\|', alleles_indices))
+                                    base1 = alleles[allele1]
+                                    base2 = alleles[allele2]
+                                except ValueError:
+                                    base1 = base2 = '.'
+                                # print(base1, base2)
+                                base = self.generate_ambiguous_code(base1, base2)
+                                # print(base)
+                                seqs[i] = "".join([seqs[i], base])
 
-        elif format == 'fasta' and not LF:
-            # fa格式不换行
-            fasta_str = ""
-            for i in range(len(sample_name)):
-                fasta_str += f">{sample_name[i]}\n{seqs[i]}\n"
-            out_str = fasta_str
-
+        fasta_str = ""
+        for i in range(len(sample_name)):
+            fasta_str += f">{sample_name[i]}\n{seqs[i]}\n"
+        out_str = fasta_str
+        out_file = os.path.splitext(vcf_file)[0] + '.fa'
+        #print(out_file)
         with open(out_file, 'w') as f:
             f.writelines(out_str)
+        return out_file
+
+    def merge_seq(self, input_files, out_file, format):
+        """merge split fa files"""
+        sequences = {}
+        for file_name in input_files:
+            for seq_record in SeqIO.parse(file_name, "fasta"):
+                seq_id = seq_record.id
+                # 判断当前 ID 是否已经存在于 sequences 字典中
+                if seq_id in sequences:
+                    # 如果存在，则将当前序列拼接到已有序列的末尾
+                    sequences[seq_id] += seq_record.seq
+                else:
+                    # 如果不存在，则将当前序列添加到字典中
+                    sequences[seq_id] = seq_record.seq
+
+        if format == 'phylip':
+            out_f = out_file + '.phy'
+            with open(out_f, 'w') as file:
+                num_sequences = len(sequences)
+                sequence_length = len(next(iter(sequences.values())))
+                file.write(f'{num_sequences} {sequence_length}\n')
+                for sequence_id, sequence in sequences.items():
+                    file.write(f'{sequence_id:<10}{sequence}\n')
+        else:
+            out_f = out_file + '.fa'
+            with open(out_f, "w") as f:
+                for seq_id, seq in sequences.items():
+                    f.write(">{}\n{}\n".format(seq_id, seq))
+
+
 
     def PHYLIP_tree(self, infile, out_path):
         # 这个软件在运行过程中会一直在屏幕打印信息，用什么系统运行命令都会有问题，暂时不考虑用这个软件
@@ -158,14 +195,26 @@ class VcfTree(RunCmd):
               'consense<consense.par && mv outfile cons.out && mv outtree constree'
         return cmd.run_command(run)
 
+    def change_file_extension(self, file_list, new_extension):
+        new_file_list = []
+        for file_name in file_list:
+            base_name, _ = os.path.splitext(file_name)
+            new_file_name = base_name + new_extension
+            new_file_list.append(new_file_name)
+        return new_file_list
+
     def snp_tree(self):
         basename = 'SNP'
-        if self.tree_software.upper() == 'TREEBEST':
-            self.convert_vcf_to_seq(self.vcf_file, f'{self.out_path}/SNP.fa', 'fasta', 'False')
-            infile = f'{self.out_path}/SNP.fa'
+        splitfiles = self.cutFile(self.vcf_file, int(self.thread), self.working_dir)
+        fa_list = self.change_file_extension(splitfiles, '.fa')
+        p = multiprocessing.Pool(int(self.thread))
+        p.map(self.convert_vcf_to_seq, splitfiles)
+        if self.tree_software.upper() == 'TREEBEST' or 'FASTTREE':
+            self.merge_seq(fa_list, f'{self.out_path}/all_snp', 'fa')
+            infile = f'{self.out_path}/all_snp.fa'
         else:
-            self.convert_vcf_to_seq(self.vcf_file, f'{self.out_path}/SNP.phy', 'phylip', 'False')
-            infile = f'{self.out_path}/SNP.phy'
+            self.merge_seq(fa_list, f'{self.out_path}/all_snp', 'phylip')
+            infile = f'{self.out_path}/all_snp.phy'
         cmd.built_tree(infile, f'{self.out_path}', basename, 1)
 
 

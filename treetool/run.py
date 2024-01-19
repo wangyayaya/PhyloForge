@@ -76,17 +76,26 @@ def get_parser():
         opt_cfg = args.gene_tree
         tree = 'gene'
 
-
     elif args.sc:
         conf = configparser.ConfigParser()
         conf.read(args.sc)
         cfg = os.path.join(treetool.__path__[0], "cfg/software.ini")
-        if conf.sections()[0] == 'software':
-            conf.write(open(cfg, 'w'))
-            print('Software config file has been modified')
+        existing_conf = configparser.ConfigParser()
+        existing_conf.read(cfg)
+        if conf.has_section('software'):
+            for section in conf.sections():
+                if not existing_conf.has_section(section):
+                    existing_conf.add_section(section)
+                for option in conf.options(section):
+                    value = conf.get(section, option)
+                    existing_conf.set(section, option, value)
+            with open(cfg, 'w') as f:
+                existing_conf.write(f)
+            print('Software config file has been updated')
         else:
-            print('Software config file no change')
+            print('Invalid config file format')
         sys.exit()
+
 
     else:
         print(parser.format_usage())

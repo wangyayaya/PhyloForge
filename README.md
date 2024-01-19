@@ -1,9 +1,8 @@
-# TreeTool使用说明
+# phyloforge使用说明
 
-TreeTool是一个可以满足多种使用需求的系统发育分析pipeline，可用于构建物种树及基因树，针对物种树，TreeTool可基于基因组CDS、细胞器编码基因CDS及细胞器全基因组组序列进行多物种系统发育分析以及基于SNP位点或SV进行群体系统发育分析。
+phyloforge是一个可以满足多种使用需求的系统发育分析pipeline，可用于构建物种树及基因树，针对物种树，phyloforge可基于基因组CDS、细胞器编码基因CDS及细胞器全基因组组序列进行多物种系统发育分析以及基于SNP位点或SV进行群体系统发育分析。
 
-####王亚，1552082076@qq.com
-####https://github.com/wangyayaya/TreeTool
+软件安装：conda install -c wangxiaobei phyloforge
 
 ## 1.基于低拷贝核基因组CDS序列构建系统发育树
 
@@ -29,9 +28,9 @@ $ hmmpress embryophyta_odb10.hmm
 $ realpath embryophyta_odb10.hmm
 ```
 
-#### 4.运行参数配置说明
+#### 2.运行参数配置说明
 
-可通过treetool -grc >run.config获取配置文件
+可通过phyloforge -c >run.config获取配置文件
 
 run.config参数说明:
 
@@ -42,7 +41,7 @@ out_path = D:\WANG\Species_Tree\Species_Tree\out\  #结果输出目录
 thread = int(>=2) #线程数，默认10，最小2
 orthodb = ~/database/fungi_odb9/fungi_odb9.hmm  #busco数据库路径，参考1.1
 aln_software = muscle/mafft/clustalw #序列比对软件，默认mafft
-tree_software = iqtree/fasttree/raxml(Multithreaded version) #构树软件，默认raxmal 
+tree_software = iqtree/fasttree/raxml #构树软件，默认raxmal 
 cover = 7 #每个OG中物种数量，当做树物种为100，该参数选择50时，即每个OG中物种覆盖率至少为50%。默认为物种数量，即物种覆盖率100%
 copy_number = 1/2/3…… #基因拷贝数，1：单拷贝，2以上为低拷贝，默认1
 mode = 0 #选择运行模式，默认0
@@ -55,14 +54,14 @@ seq = cds/pep/codon/codon1/condon2 #选择用那种类型序列来构建物种�
 coa_con = 0/1 #选择构建并联树或串联树，0：只构建并联树，1：构建并联树及串联树
 ```
 
-完成配置后，运行命令：treetool -l run.config构建基于低拷贝核基因系统发育树
+完成配置后，运行命令：phyloforge -l run.config构建基于低拷贝核基因系统发育树
 
 Tips：
 
 1. 基于低拷贝核基因组流程支持续跑，如需增删物种续跑，只需增删in_path中文件即可。如果需要修改某一物种的cds文件后续跑，且03_hmm_out下已生成对应的完整的文件，请删除03_hmm_out下对应的该物种结果文件再续跑，或将新的cds文件重命名。
 2. 当seq选择condon时，有些不规范的序列无法转换为codon，会默认将该序列删除。实际建树的序列可能会少于筛选到的OG的数量。
 
-#### 5.结果文件说明
+#### 3.结果文件说明
 
 ```
 out/
@@ -89,7 +88,9 @@ out/
 
 在1.1单基因构树模式中，当copy_number参数设置大于1时，某一物种在某一OG下可能会有多个拷贝，单基因模式会根据hmmscan搜索结果，根据e值保留基因与busco id双向最佳匹配的一个基因。这里我们开发了多基因模式，即将有多个拷贝的基因全部保留，使用astral-pro(https://github.com/chaoszhang/A-pro)合并基因树，该模式只能构建并联树
 
-astral-pro软件需要自己配置，需要配置astral-pro
+astral-pro软件需要自己配置
+
+运行phyloforge -gsc >software.config获取软件配置文件
 
 software.config：
 
@@ -98,7 +99,7 @@ software.config：
 astral_pro=~/software/A-pro-master/ASTRAL-MP/astral.1.1.6.jar
 ```
 
-运行
+将软件路径改为自己安装的实际路径，配置好后运行phyloforge -sc software.config配置软件
 
 run.config参数同1.1:
 
@@ -117,7 +118,7 @@ seq = cds
 coa_con = 0
 ```
 
-完成配置后，运行命令：treetool -m run.config构建基于低拷贝核基因系统发育树。输出结果同1.1
+完成配置后，运行命令：phyloforge -m run.config构建基于低拷贝核基因系统发育树。输出结果同1.1
 
 Tips：理论上iqtree，fasttree及raxml都可以用于构树，但使用fasttree时，可能会出现基因树不是二叉树的情况，此时astral-pro合并会出现问题，因此多基因树模式不建议使用fasttree用来构树
 
@@ -145,15 +146,7 @@ ATGACTGCAATTTTAGAGAGACGCGAAAGCGAAAGCCTATGGGGTCGCTTCTGTAACTGGATAACTAGCA
 
 Tips：NCBI下载的数据中应带有如[gene=psbA]的特征，以识别基因，否则以fasta文件中的基因ID作为基因名
 
-#### 2.依赖软件
-
-见1.2中2-6
-
-#### 3.设置软件配置文件
-
-同1.3
-
-#### 4.运行参数配置说明
+#### 2.运行参数配置说明
 
 ```
 [organelle_opt]
@@ -166,9 +159,9 @@ tree_software = raxml
 seq = codon
 ```
 
-完成配置后，运行命令：treetool -o run.config构建基于细胞器编码基因的系统发育树
+完成配置后，运行命令：phyloforge -o run.config构建基于细胞器编码基因的系统发育树
 
-#### 5.结果文件说明
+#### 3.结果文件说明
 
 ```
 out/
@@ -194,15 +187,7 @@ out/
 
 该软件需要需要用户提供做物种树物种的细胞器全基因组序列，物种全基因组序列文件建议以genus_species.fa(fas/fasta)来命名最终结果中即以genus_species作为物种名。
 
-#### 2.依赖软件
-
-见1.2中2-5及6
-
-#### 3.设置软件配置文件
-
-同1.3
-
-#### 4.运行参数配置说明
+#### 2.运行参数配置说明
 
 ```
 [whole_genome_opt]
@@ -213,9 +198,9 @@ aln_software = mafft/muscle/clustalw #序列较大时，clustalw会比较慢，�
 tree_software = raxml
 ```
 
-完成配置后，运行命令：treetool -w run.config构建基于细胞器全基因组序列的系统发育树
+完成配置后，运行命令：phyloforge -w run.config构建基于细胞器全基因组序列的系统发育树
 
-#### 5.结果文件说明
+#### 3.结果文件说明
 
 ```
 out/
@@ -254,17 +239,7 @@ Chr1	250	.	C	T	2351.05	PASS	AC=9;AF=0.080;AN=112;BaseQRankSum=0.305;DP=1112;Exce
 ……
 ```
 
-
-
-### 2.依赖软件
-
-与配置文件对应的构树软件：treebest或者PhyML
-
-### 3.设置软件配置文件
-
-同1.3
-
-### 4.运行参数配置说明
+### 2.运行参数配置说明
 
 ```
 [snp_opt] #构建基于SNP位点的树
@@ -273,9 +248,9 @@ out_path = /path/to/output/
 tree_software = treebst/phyml #构树软件，可选择treebest或者phyml
 ```
 
-完成配置后，运行命令：treetool -s run.config构建基于snp位点的系统发育树
+完成配置后，运行命令：phyloforge -s run.config构建基于snp位点的系统发育树
 
-### 5.结果文件说明
+### 3.结果文件说明
 
 ```
 out/
@@ -311,15 +286,7 @@ chr1	90258	.	A	AGTCCCTCTGTCTCTGCCAACCAGTTAACCTGCTGCTTCCTGGAGGAAGACAGTCCCTCT	.	.
 
 两种类型的VCF文件均可，但要求都得在INFO列标有“SVTYPE=”的信息
 
-### 2.依赖软件
-
-与配置文件对应的构树软件：iqtree
-
-### 3.设置软件配置文件
-
-同1.3
-
-### 4.运行参数配置说明
+### 2.运行参数配置说明
 
 ```
 [sv_opt] #构建基于SNP位点的树
@@ -329,9 +296,9 @@ tree_software = iqtree #构树软件，只能iqtree
 thread = 10 #线程数
 ```
 
-完成配置后，运行命令：treetool -S run.config构建基于基因组结构变异的系统发育树
+完成配置后，运行命令：phyloforge -S run.config构建基于基因组结构变异的系统发育树
 
-### 5.结果文件说明
+### 3.结果文件说明
 
 ```
 SV_out/
@@ -355,14 +322,6 @@ SV_out/
 
 fasta格式的CDS序列文件，一个文件将生成一棵树，将所有文件存放于一个目录下
 
-### 2.依赖软件
-
-与配置文件对应的构树软件
-
-### 3.设置软件配置文件
-
-同1.3
-
 ### 4.运行参数配置说明
 
 ```
@@ -375,7 +334,7 @@ tree_software = fasttree/iqtree/raxml/treebest/
 thread = 10
 ```
 
-完成配置后，运行命令：treetool -g run.config构建基于细胞器编码基因的系统发育树
+完成配置后，运行命令：phyloforge -g run.config构建基于细胞器编码基因的系统发育树
 
 ### 5.结果文件说明
 

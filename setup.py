@@ -9,7 +9,7 @@ with open("README.md", "r", encoding='utf-8') as fr:
 required = ['biopython']
 
 setup(
-    name="treetool",
+    name="phyloforge",
     version="1.0.0",
     author="Ya Wang",
     author_email="1552082076@qq.com",
@@ -28,7 +28,7 @@ setup(
     ],
     entry_points={
         'console_scripts': [
-            'treetool = treetool.run:main',
+            'phyloforge = treetool.run:main',
         ]
     },
     zip_safe=True,
