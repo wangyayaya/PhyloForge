@@ -170,20 +170,20 @@ After completing the configuration, run the command: phyloforge -o run.config to
 #### 3. Explanation of Result Files
 
 ```
-out/
-├── 01_cds_format #格式化后的cds文件
-├── 02_pep #cds对应的pep文件
-├── 03_OG_all #根据基因名获得的所有OG
-├── 04_OG #根据物种覆盖度筛选后的OG
-#以下同1.5中的结果
+Copy Codeout/
+├── 01_cds_format # Formatted CDS files
+├── 02_pep # Corresponding peptide files for CDS
+├── 03_OG_all # All OGs obtained based on gene names
+├── 04_OG # OGs filtered based on species coverage
+# The following are the same as the results in 1.5
 ├── 05_seq
 ├── 06_aln
-│   ├── 01_aln
-│   ├── 02_trim
-│   └── 03_trim_rename
+│   ├── 01_aln
+│   ├── 02_trim
+│   └── 03_trim_rename
 ├── 07_tree
-│   ├── 01_coatree
-│   └── 02_contree
+│   ├── 01_coatree
+│   └── 02_contree
 └── 08_result
 ```
 
@@ -248,13 +248,13 @@ Chr1	250	.	C	T	2351.05	PASS	AC=9;AF=0.080;AN=112;BaseQRankSum=0.305;DP=1112;Exce
 ### 2. Explanation of Running Parameters Configuration
 
 ```
-[snp_opt] #构建基于SNP位点的树
+Copy Code[snp_opt] # Tree construction based on SNP sites
 vcf_file = in.vcf
 out_path = /path/to/output/
-tree_software = treebst/phyml #构树软件，可选择treebest或者phyml
+tree_software = treebst/phyml # Tree construction software, choose either treebest or phyml
 ```
 
-完成配置后，运行命令：phyloforge -s run.config构建基于snp位点的系统发育树
+After completing the configuration, run the command: phyloforge -s run.config to build a phylogenetic tree based on SNP sites.
 
 ### 3. Explanation of Result Files
 
