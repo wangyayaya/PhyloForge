@@ -1,22 +1,28 @@
-# phyloforge使用说明
+# PhyloForge
 
-phyloforge是一个可以满足多种使用需求的系统发育分析pipeline，可用于构建物种树及基因树，针对物种树，phyloforge可基于基因组CDS、细胞器编码基因CDS及细胞器全基因组组序列进行多物种系统发育分析以及基于SNP位点或SV进行群体系统发育分析。
+PhyloForge is a collection of phylogenetic analysis tools that can fulfill various research needs. It enables phylogenetic analysis for both microevolution and macroevolution of species, as well as sequence evolution.
 
-软件安装：conda install -c wangxiaobei phyloforge
+For macroevolution, PhyloForge allows multi-species phylogenetic analysis based on genomic CDS (coding sequence), organellar CDS, and organellar whole genome sequences. For microevolution, PhyloForge supports population phylogenetic analysis based on SNP (single nucleotide polymorphism) sites or structural variations (SV). Lastly, PhyloForge facilitates batch sequence-based phylogenetic analysis.
 
-## 1.基于低拷贝核基因组CDS序列构建系统发育树
+## Software Installation
 
-### 1.1单拷贝基因构树模式
+This software can be installed using conda, with the requirement of python=3.11 or 3.12.
 
-#### 1.所需文件
+```shell
+$ conda install -c wangxiaobei phyloforge
+```
 
-该流程需要两个需要用户提供的文件：
+## 1. Building phylogenetic trees based on low-copy nuclear gene CDS sequences
 
-1）需要做物种树的物种cds序列（建议每个基因只保留最长转录本），存放于一个文件夹下，物种cds文件建议以genus_species.cds (fa/fas/fasta)来命名，最终物种树中即以genus_species作为物种名。基因名有一个可以区分的简短的ID即可，不要有“|”或者“:”及”( “  ” )”等字符
+### 1.1 Single-copy gene tree construction mode
 
-2）与做物种树的物种对应的BUSCO核心基因集，该文件可以按如下步骤获取处理：
+#### 1. Required files
 
-访问BUSCO数据库：[Index of /v5/data/lineages/ (ezlab.org)](https://busco-data.ezlab.org/v5/data/lineages/)或者https://busco-archive.ezlab.org/v3/ 下载与物种对应的数据集，例如被子植物一般下载有胚植物（Embryophyta odb10）核心基因集：
+1. Species CDS sequences for constructing the species tree (It is recommended to keep only the longest transcript for each gene). These sequences should be stored in a folder, and the species CDS files are suggested to be named as "genus_species.cds" (fa/fas/fasta), where "genus_species" represents the species name in the final species tree. The gene names should have a distinguishable short ID and should not contain characters such as "|" or ":" or "(" ")" or be purely numeric.
+
+2. BUSCO core gene set corresponding to the species used for constructing the species tree. This file can be obtained and processed using the following steps:
+
+Visit the BUSCO database: [Index of /v5/data/lineages/ (ezlab.org)](https://busco-data.ezlab.org/v5/data/lineages/) or https://busco-archive.ezlab.org/v3/ to download the dataset corresponding to the species. For example, for angiosperms, you can download the Embryophyta (odb10) core gene set：
 
 ```shell
 $ wget -c https://busco-archive.ezlab.org/v3/datasets/prerelease/embryophyta_odb10.tar.gz -O embryophyta_odb10.tar.gz
@@ -24,73 +30,73 @@ $ tar -zxvf embryophyta_odb10.tar.gz
 $ cd embryophyta_odb10
 $ cat hmms/*.hmm >embryophyta_odb10.hmm
 $ hmmpress embryophyta_odb10.hmm
-# 获取embryophyta_odb10.hmm路径，将其写入对应的配置文件中
+# Obtain the path for "embryophyta_odb10.hmm" and write it into the corresponding configuration file.
 $ realpath embryophyta_odb10.hmm
 ```
 
-#### 2.运行参数配置说明
+#### 2. Explanation of Running Parameters Configuration
 
-可通过phyloforge -c >run.config获取配置文件
+You can obtain the configuration file by using "phyloforge -c > run.config".
 
-run.config参数说明:
+Explanation of parameters in run.config:
 
 ```
-[lcn_opt] #构建基于低拷贝/单拷贝核基因的树
-in_path = D:\WANG\Species_Tree\cs\ #cds文件目录
-out_path = D:\WANG\Species_Tree\Species_Tree\out\  #结果输出目录
-thread = int(>=2) #线程数，默认10，最小2
-orthodb = ~/database/fungi_odb9/fungi_odb9.hmm  #busco数据库路径，参考1.1
-aln_software = muscle/mafft/clustalw #序列比对软件，默认mafft
-tree_software = iqtree/fasttree/raxml #构树软件，默认raxmal 
-cover = 7 #每个OG中物种数量，当做树物种为100，该参数选择50时，即每个OG中物种覆盖率至少为50%。默认为物种数量，即物种覆盖率100%
-copy_number = 1/2/3…… #基因拷贝数，1：单拷贝，2以上为低拷贝，默认1
-mode = 0 #选择运行模式，默认0
-#0：从头开始跑完全流程，即从cds到tree
-#1：从头跑到筛选完OG（初步判断OG数目是否适当），即从cds到OGs
-#2：单独运行筛选OG这一步骤（筛选出适当的OG数目），即筛选合适的OGs
-#3：从筛选完OG后运行完后续全步骤，即OGs到tree
-seq = cds/pep/codon/codon1/condon2 #选择用那种类型序列来构建物种树，默认cds.codon1:保留密码子第1，2位，codon2：保留密码子第三位
-#注意，当选择使用codon做树时，并不是所有序列都能转换为codon，因此实际用来做树的OG数目可能会少于筛选到的数目，可使用ls out_path/06_aln/02_trim|wc -l查看实际做树的OG数目
-coa_con = 0/1 #选择构建并联树或串联树，0：只构建并联树，1：构建并联树及串联树
+[lcn_opt] # Constructing trees based on low-copy/single-copy nuclear genes
+in_path = D:\WANG\Species_Tree\cs\ # Directory for CDS files
+out_path = D:\WANG\Species_Tree\Species_Tree\out\  # Output directory for results
+thread = int(>=2) # Number of threads, default is 10, minimum is 2
+orthodb = ~/database/fungi_odb9/fungi_odb9.hmm  # Path to the BUSCO database, see section 1.1 for reference
+aln_software = muscle/mafft/clustalw # Sequence alignment software, default is mafft
+tree_software = iqtree/fasttree/raxml # Tree construction software, default is raxml
+cover = 7 # Number of species in each OG, when the total number of species in the tree is 100, choosing a parameter of 50 means that each OG has a coverage of at least 50%. Default is the total number of species, i.e., 100% species coverage
+copy_number = 1/2/3…… # Gene copy number, 1: single-copy, 2 or more: low-copy, default is 1
+mode = 0 # Select the running mode, default is 0
+#0: Run the entire process from CDS to tree
+#1: Run from CDS to preliminary selection of OGs (to determine if the number of OGs is appropriate)
+#2: Run the step of selecting OGs separately (to select the appropriate number of OGs)
+#3: Run the entire subsequent steps from selected OGs to tree
+seq = cds/pep/codon/codon1/condon2 # Choose the type of sequence used to construct the species tree, default is cds.codon1: retain the first and second positions of the codon, codon2: retain the third position of the codon
+#Note that when using codon for tree construction, not all sequences can be converted to codons, so the actual number of OGs used for tree construction may be less than the selected number. You can use ls out_path/06_aln/02_trim|wc -l to check the actual number of OGs used for tree construction
+coa_con = 0/1 # Choose to construct either concatenated trees or coalescent trees, 0: only construct concatenated trees, 1: construct both concatenated and coalescent trees
 ```
 
-完成配置后，运行命令：phyloforge -l run.config构建基于低拷贝核基因系统发育树
+After completing the configuration, run the command: phyloforge -l run.config to construct the phylogenetic tree based on low-copy nuclear genes.
 
-Tips：
+Tips:
 
-1. 基于低拷贝核基因组流程支持续跑，如需增删物种续跑，只需增删in_path中文件即可。如果需要修改某一物种的cds文件后续跑，且03_hmm_out下已生成对应的完整的文件，请删除03_hmm_out下对应的该物种结果文件再续跑，或将新的cds文件重命名。
-2. 当seq选择condon时，有些不规范的序列无法转换为codon，会默认将该序列删除。实际建树的序列可能会少于筛选到的OG的数量。
+1. The workflow for low-copy nuclear genes supports resuming. If you need to add or remove species for continuation, simply add or delete the corresponding files in the in_path directory. If you need to modify the cds file for a specific species and there is already a complete file generated under 03_hmm_out, please delete the corresponding result file for that species in 03_hmm_out before resuming or rename the new cds file.
+2. When seq is selected as codon, some non-standard sequences cannot be converted into codons and will be deleted by default. The actual number of sequences used for tree construction may be less than the number of filtered OGs.
 
-#### 3.结果文件说明
+#### 3. Explanation of Result Files
 
 ```
 out/
-├── 01_cds_format #格式化后的cds文件
-├── 02_pep #cds对应pep文件
-├── 03_hmm_out #hmmscan搜索结果
-├── 04_OG #筛选的同源低/单拷贝基因OG，当某一物种在该OG下有多个拷贝时，根据hmmscan结果，保留e值最小的一个
-├── 05_seq #OG对应的序列
-│   ├── 01_cds #cds序列
-│   └── 02_pep #pep序列
-├── 06_aln #序列比对结果
-│   ├── 01_aln #序列比对结果
-│   ├── 02_trim #序列修剪结果
-│   └── 03_trim_rename #序列修剪后将基因id重命名为物种名
-├── 07_tree #树
-│   ├── 01_coatree #并联树
-│   └── 02_contree #串联树
-└── 08_result #结果，生成结果以串联/并联_seq_software.nwk格式命名
+├── 01_cds_format # Formatted cds files
+├── 02_pep # Corresponding pep files for cds
+├── 03_hmm_out # hmmscan search results
+├── 04_OG # Selected orthologous low/single-copy genes (OGs), when a species has multiple copies in the same OG, the one with the smallest e-value is retained based on the hmmscan result
+├── 05_seq # Sequences corresponding to OGs
+│   ├── 01_cds # cds sequences
+│   └── 02_pep # pep sequences
+├── 06_aln # Sequence alignment results
+│   ├── 01_aln # Sequence alignment results
+│   ├── 02_trim # Sequence trimming results
+│   └── 03_trim_rename # Gene IDs renamed to species names after sequence trimming
+├── 07_tree # Trees
+│   ├── 01_coatree # Coalescent tree
+│   └── 02_contree # Concatenated tree
+└── 08_result # Results, generated results are named in concatenated/coalescent_seq_software.nwk format
 ```
 
-**需要注意的是，当物种覆盖度不是百分之百时，尽管物种覆盖度设置得很高，但是也可能会出现所有OGs中都没有某一物种的情况，或者该物种只在少数OGs中出现，这会导致最后做树没有该物种，或者该物种系统发育位置不准确，这种情况建议只能将该物种删除，或者通过调整cover及copy_number参数，尽量提高该物种出现的频率**
+**Please note that even if the species coverage is set to a high value, there may still be cases where a certain species is not present in any of the OGs or only appears in a few OGs when the species coverage is not 100%. This can result in the absence of that species in the final tree or inaccurate phylogenetic placement of that species. In such cases, it is recommended to either remove that species or adjust the cover and copy_number parameters to increase the frequency of occurrence for that species as much as possible.**
 
-### **1.2多拷贝基因构树模式**
+### **1.2 Multi-copy gene tree construction mode**
 
-在1.1单基因构树模式中，当copy_number参数设置大于1时，某一物种在某一OG下可能会有多个拷贝，单基因模式会根据hmmscan搜索结果，根据e值保留基因与busco id双向最佳匹配的一个基因。这里我们开发了多基因模式，即将有多个拷贝的基因全部保留，使用astral-pro(https://github.com/chaoszhang/A-pro)合并基因树，该模式只能构建并联树
+In the single-gene tree construction mode (1.1), when the copy_number parameter is set to a value greater than 1, a species may have multiple copies within a single OG. In the single-gene mode, based on the hmmscan search results, only one gene, which represents the best bidirectional match with the busco id based on the e-value, will be retained. Here, we have developed a multi-gene mode, where all copies of genes with multiple duplications are retained. We use astral-pro (https://github.com/chaoszhang/A-pro) to merge gene trees. This mode can only construct concatenated trees.
 
-astral-pro软件需要自己配置
+Please note that astral-pro software needs to be configured manually.
 
-运行phyloforge -gsc >software.config获取软件配置文件
+Run "phyloforge -gsc >software.config" to obtain the software configuration file.
 
 software.config：
 
@@ -99,9 +105,9 @@ software.config：
 astral_pro=~/software/A-pro-master/ASTRAL-MP/astral.1.1.6.jar
 ```
 
-将软件路径改为自己安装的实际路径，配置好后运行phyloforge -sc software.config配置软件
+Please update the software path to the actual path where you have installed the software. Once configured, run phyloforge -sc software.config to configure the software.
 
-run.config参数同1.1:
+The run.config parameters are the same as in 1.1:
 
 ```
 [lcn_opt_m]
@@ -118,19 +124,19 @@ seq = cds
 coa_con = 0
 ```
 
-完成配置后，运行命令：phyloforge -m run.config构建基于低拷贝核基因系统发育树。输出结果同1.1
+After completing the configuration, run the command: phyloforge -m run.config to build a phylogenetic tree based on low-copy nuclear genes. The output results are the same as in 1.1.
 
-Tips：理论上iqtree，fasttree及raxml都可以用于构树，但使用fasttree时，可能会出现基因树不是二叉树的情况，此时astral-pro合并会出现问题，因此多基因树模式不建议使用fasttree用来构树
+Tips: In theory, iqtree, fasttree, and raxml can all be used for tree construction. However, when using fasttree, non-binary gene trees may occur, which can cause issues with astral-pro merging. Therefore, it is not recommended to use fasttree for tree construction in the multi-gene tree mode.
 
-此外如果同一批数据既需要做单拷贝模式又需要做多拷贝模式，03_hmm_out下的文件是两者可以直接使用的，其中一个模式运行完后可直接拷贝到另一种模式下然后续跑
+Additionally, if the same set of data needs to be analyzed using both single-copy and multi-copy modes, the files in 03_hmm_out can be directly shared between the two modes. After running one mode, the results can be copied to the other mode for further analysis.
 
-## 2.基于细胞器（叶绿体等）基因组数据构建系统发育树
+## 2. Constructing Phylogenetic Trees Based on Organellar (Chloroplast, etc.) Genomic Data
 
-### 2.1 基于编码基因
+### 2.1 Using Coding Genes
 
-#### 1.所需文件
+#### 1. Required Files
 
-该软件需要用户提供做物种树物种的细胞器cds序列，存放于一个目录下，物种cds文件建议以genus_species.cds (fa/fas/fasta)来命名，最终物种树中即以genus_species作为物种名。要求每个物种fasta文件中基因ID以基因名来命名（基因名不区分大小写），或者使用从ncbi下载而来的格式，如下列三种格式：
+This software requires users to provide the CDS sequences of organellar genes for the species in the species tree, stored in a single directory. It is recommended to name the species CDS files as genus_species.cds (fa/fas/fasta), and the species tree will use genus_species as the species name. Each gene in the fasta file for each species should be named based on the gene name (case-insensitive), or in one of the following three formats obtained from NCBI:
 
 ```
 >psbA
@@ -144,14 +150,14 @@ ATGACTGCAATTTTAGAGAGACGCGAAAGCGAAAGCCTATGGGGTCGCTTCTGTAACTGGATAACTAGCA
 ……
 ```
 
-Tips：NCBI下载的数据中应带有如[gene=psbA]的特征，以识别基因，否则以fasta文件中的基因ID作为基因名
+Tips: Data downloaded from NCBI should include features like [gene=psbA] to identify genes. Otherwise, the gene ID from the fasta file will be used as the gene name.
 
-#### 2.运行参数配置说明
+#### 2. Explanation of Running Parameters Configuration
 
 ```
 [organelle_opt]
-in_path =  D:\WANG\Species_Tree\cs\  #cds文件目录
-out_path =  D:\WANG\Species_Tree\out\  #输出结果目录
+in_path = D:\WANG\Species_Tree\cs\  # Directory of CDS files
+out_path = D:\WANG\Species_Tree\out\  # Output result directory
 thread = 10
 cover = 8
 aln_software = mafft
@@ -159,9 +165,9 @@ tree_software = raxml
 seq = codon
 ```
 
-完成配置后，运行命令：phyloforge -o run.config构建基于细胞器编码基因的系统发育树
+After completing the configuration, run the command: phyloforge -o run.config to build a phylogenetic tree based on organellar coding genes.
 
-#### 3.结果文件说明
+#### 3. Explanation of Result Files
 
 ```
 out/
@@ -181,26 +187,26 @@ out/
 └── 08_result
 ```
 
-### 2.2 基于细胞器全基因组序列
+### 2.2 Using Organellar Whole Genome Sequences
 
-#### 1.所需文件
+#### 1. Required Files
 
-该软件需要需要用户提供做物种树物种的细胞器全基因组序列，物种全基因组序列文件建议以genus_species.fa(fas/fasta)来命名最终结果中即以genus_species作为物种名。
+This software requires users to provide the whole genome sequences of organellar genes for the species in the species tree. It is recommended to name the whole genome sequence files as genus_species.fa (fas/fasta), and the species tree will use genus_species as the species name.
 
-#### 2.运行参数配置说明
+#### 2. Explanation of Running Parameters Configuration
 
 ```
-[whole_genome_opt]
+Copy Code[whole_genome_opt]
 in_path = whole_genome_data
 out_path = w_out
 thread = 10
-aln_software = mafft/muscle/clustalw #序列较大时，clustalw会比较慢，不建议用它
+aln_software = mafft/muscle/clustalw # clustalw is slower when dealing with larger sequences, not recommended
 tree_software = raxml
 ```
 
-完成配置后，运行命令：phyloforge -w run.config构建基于细胞器全基因组序列的系统发育树
+After completing the configuration, run the command: phyloforge -w run.config to build a phylogenetic tree based on organellar whole genome sequences.
 
-#### 3.结果文件说明
+#### 3. Explanation of Result Files
 
 ```
 out/
@@ -222,11 +228,11 @@ out/
     └── WholeGenome_RAxML_bipartitions.nwk
 ```
 
-## 3.基于SNP位点构建系统发育树
+## 3. Constructing Phylogenetic Trees Based on SNP Sites
 
-### 1.所需文件
+### 1. Required Files
 
-VCF格式的SNP位点文件：
+VCF format SNP site file:
 
 ```
 #CHROM	POS	ID	REF	ALT	QUAL	FILTER	INFO	FORMAT	AS1-1A	AS2-1-1A	AS2-2B	AS2-3A	AS2-4-1A      BPD-1A	BSQT1-1A	Burma-1A	CADW-1A	DBZ1-1A	DHQT1-1A	DLD-1A	DPQT1-1A	DZD1-1A	FHD-1A	FHSX-1A	FY3-1AFZ2-1A	GDD-1A	GDGT1-1A	GXHXX-1A	HNHD-1A	HTD-1A	JPD-1A	LBD-1A	LCDH-1A	LJ43-1A	LK-1A	LSKC-1A	LXZSD-1A      MBD-1A	MDD-1A	ME-A-1A	MLD-1A	NCD-1A	ND-1A	PNX-1A	QGZ-1A	QXQL-1A	RHD1-1A	RHYY-1A	SB1SD-B	SCTXZ-1A	SCZ-1A	SJDY-1SL-1A	SZC-1A	TLH-1A	V-D1-1A	V-Z1-1A	Vietnam1-1A	Vietnam2-1A	WC-1A	WCD-1A	XQC-1A	YWH-1A	ZDYC-1A	ZSLD1-1A      hainan1-1A	hainan2-1A
@@ -239,7 +245,7 @@ Chr1	250	.	C	T	2351.05	PASS	AC=9;AF=0.080;AN=112;BaseQRankSum=0.305;DP=1112;Exce
 ……
 ```
 
-### 2.运行参数配置说明
+### 2. Explanation of Running Parameters Configuration
 
 ```
 [snp_opt] #构建基于SNP位点的树
@@ -250,19 +256,19 @@ tree_software = treebst/phyml #构树软件，可选择treebest或者phyml
 
 完成配置后，运行命令：phyloforge -s run.config构建基于snp位点的系统发育树
 
-### 3.结果文件说明
+### 3. Explanation of Result Files
 
 ```
 out/
-├── in.fa/phy #转化格式后的fasta或phylip格式的文件
-└── in.phy_phyml_tree.txt #构建的进化树
+├── in.fa/phy # Fasta or Phylip format file after conversion
+└── in.phy_phyml_tree.txt # Constructed evolutionary tree
 ```
 
-## 4.基于结构变异SV构建系统发育树
+## 4. Constructing Phylogenetic Trees Based on Structural Variants (SV)
 
-### 1.所需文件
+### 1. Required Files
 
-结构变异（SV）的VCF格式文件，符号表示法（Symbolic notation）即在ALT列标出具体的SV类型：
+VCF format file of structural variants (SV) with symbolic notation in the ALT column indicating the specific SV type:
 
 ```
 #CHROM	POS	ID	REF	ALT	QUAL	FILTER	INFO	FORMAT	04K5672	04K5686	04K5702	05W002	05WN230	07KS4	1323  150	177	18-599	238	268	303WX	3411X	384-2	3H-2X	4F1	501	5237	526018	5311	647	7327  7884-4HT	81162	812	832	835B	8902	9642	975-12	9782	A619	B11	B110	B111	B113	B114	B151  B73	B77	BEM	BGY	BK	BS16	BT1	BY4839	BY4944	BY4960	BY804	BY807	BY809	BY813	BY815	BY843 BY855	BZN	C8605	CF3	CHANG3	CHANG7-2	CHENG698	CHUAN48-2	CI7	CIMBL1	CIMBL10	CIMBL100      CIMBL101	CIMBL102	CIMBL104	CIMBL105	CIMBL106	CIMBL107	CIMBL108	CIMBL11	CIMBL110      CIMBL111	CIMBL112	CIMBL113	CIMBL114	CIMBL115	CIMBL116	CIMBL117	CIMBL118	CIMBL119	CIMBL120	CIMBL121	CIMBL122	CIMBL123	CIMBL124	CIMBL125	CIMBL126	CIMBL127	CIMBL128	CIMBL129	CIMBL13	CIMBL130	CIMBL131	CIMBL132	CIMBL133	CIMBL134      CIMBL135	CIMBL136	CIMBL137	CIMBL138	CIMBL139	CIMBL14	CIMBL140	CIMBL141	CIMBL142      CIMBL143	CIMBL144	CIMBL145	CIMBL146	CIMBL147	CIMBL148	CIMBL149	CIMBL15	CIMBL150      CIMBL151	CIMBL152	CIMBL153	CIMBL154	CIMBL155	CIMBL156	CIMBL157	CIMBL16	CIMBL17	CIMBL1CIMBL19	CIMBL2	CIMBL20	CIMBL21	CIMBL22	CIMBL23	CIMBL25	CIMBL26	CIMBL27	CIMBL28	CIMBL3	CIMBL30	CIMBL31	CIMBL32	CIMBL33	CIMBL3CIMBL35	CIMBL36	CIMBL37	CIMBL38	CIMBL39X	CIMBL4	CIMBL40	CIMBL41	CIMBL42	CIMBL43	CIMBL44	CIMBL45X	CIMBL46	CIMBL4CIMBL48	CIMBL49	CIMBL5	CIMBL50	CIMBL51	CIMBL52	CIMBL53	CIMBL54	CIMBL56	CIMBL57	CIMBL58-M	CIMBL59	CIMBL6	CIMBL60	CIMBL61X	CIMBL62	CIMBL63	CIMBL65	CIMBL66	CIMBL67	CIMBL68	CIMBL69	CIMBL7	CIMBL70	CIMBL71	CIMBL72	CIMBL73X	CIMBL74	CIMBL7CIMBL76	CIMBL77	CIMBL78	CIMBL79	CIMBL8	CIMBL80X	CIMBL81	CIMBL82	CIMBL83	CIMBL84	CIMBL85X	CIMBL86	CIMBL87X      CIMBL88	CIMBL89	CIMBL9	CIMBL90	CIMBL91	CIMBL92	CIMBL93	CIMBL94	CIMBL95	CIMBL96	CIMBL97	CIMBL98	CIMBL99	CML113	CML114	CML115-M	CML115X	CML118	CML121	CML122	CML130	CML134	CML139	CML162	CML163	CML165	CML168	CML169-M	CML170	CML171CML172	CML189	CML191	CML192	CML20	CML223	CML225	CML226	CML228	CML229	CML27	CML28	CML282	CML285	CML286X	CML287CML289	CML29	CML290	CML298	CML300	CML305	CML307	CML31	CML32	CML323	CML324	CML325	CML326X	CML327	CML338	CML360CML361	CML364	CML40	CML408-M	CML411	CML415	CML422	CML423	CML426	CML428	CML431	CML432	CML451	CML454	CML465CML468	CML470	CML471	CML479	CML480	CML486-M	CML493	CML496	CML497	CML50	CML51-M	CML69	CY72	D047	D863F DAN3130	DAN340	DAN360	DAN4245	DAN598	DAN599	DAN9046	DE.EX	DH29	DH3732	DONG237	DONG46	DSB	E28	EN25	ES40  FCD0602	GEMS1	GEMS10	GEMS11	GEMS12-M	GEMS13	GEMS14	GEMS15	GEMS16	GEMS17	GEMS18	GEMS19	GEMS2	GEMS20	GEMS21GEMS23	GEMS24	GEMS25	GEMS27	GEMS28	GEMS29	GEMS3	GEMS30	GEMS31	GEMS32	GEMS33	GEMS35	GEMS36	GEMS37	GEMS39	GEMS4 GEMS40	GEMS41	GEMS42	GEMS43	GEMS44	GEMS45	GEMS46	GEMS47	GEMS48	GEMS49	GEMS5	GEMS50	GEMS51	GEMS52	GEMS53	GEMS54GEMS55	GEMS56	GEMS57	GEMS58	GEMS59	GEMS6	GEMS60	GEMS61	GEMS62	GEMS63	GEMS64	GEMS65	GEMS66	GEMS9	GY1032	GY220 GY237	GY386	GY386B	GY462	GY798	GY923	H21	HB	HSBN	HTH-17	HUA83-2	HUANGC	HYS	HZS	IRF291	IRF314JH59	JH96C	JI53	JI63	JI842	JI846	JI853	JIAO51	JING24	JING724	JY01	K10	K12	K22	L3180	LG001 LIAO138	LIAO159	LIAO5114	LIAO5262	LIAO5263	LK11	LV28	LXN	LY	LY042	M153	M165	M97   MN	MO17	NAN21-3	NMJT	P138	P178	P6WC	PH4VC	Q1261X	QI205	QI319	R08	R15	R15X1141	RY684 RY697	RY713	RY729	RY732	RY737	S22-M	S22X	S37	SC55	SHEN137	SHEN5003	SI273	SI434	SI446	SK    SW1611	SW92E114	SY1032	SY1035	SY1039	SY1052	SY1077	SY3073	SY998	SY999	TIAN77	TIE7922	TT16	TX5	TY1   TY10	TY11	TY2	TY3	TY4	TY5	TY6	TY7	TY8	TY9	U8112	W138	WH413	WMR	WU109	XI502 XUN971	XZ698	YAN414	YE478	YE488	YE515	YE52106	YE8001	YU374	YU87-1	Z2018F	ZAC546-M	ZB648	ZH68	ZHENG2ZHENG28	ZHENG29	ZHENG30	ZHENG32	ZHENG35	ZHENG58	ZHENG653	ZHI41	ZHONG69	ZI330	ZONG3	ZONG31	ZZ01	ZZ03
@@ -273,7 +279,7 @@ out/
 ……
 ```
 
-或者BND notation：BND表示法，即在INFO列以SVTYPE=BND标出：
+or BND notation, indicated in the INFO column as SVTYPE=BND:
 
 ```
 #CHROM	POS	ID	REF	ALT	QUAL	FILTER	INFO	FORMAT	HG00731	HG00732	HG00512	HG00513	NA19238	NA19239	NA24385	HG03125	NA12878	HG03486	HG02818	HG03065	HG03683	HG02011	HG03371	NA12329	HG00171	NA18939	HG03732	HG00096	NA20847	HG03009	NA20509	HG00864	HG01505	NA18534	NA19650	HG02587	HG01596	HG01114	NA19983	HG02492
@@ -284,21 +290,21 @@ chr1	90258	.	A	AGTCCCTCTGTCTCTGCCAACCAGTTAACCTGCTGCTTCCTGGAGGAAGACAGTCCCTCT	.	.
 ……
 ```
 
-两种类型的VCF文件均可，但要求都得在INFO列标有“SVTYPE=”的信息
+Both types of VCF files are acceptable, but it is required that they both have information in the INFO column marked with "SVTYPE=".
 
-### 2.运行参数配置说明
+### 2. Explanation of Running Parameters Configuration
 
 ```
-[sv_opt] #构建基于SNP位点的树
+Copy Code[sv_opt] # Tree construction based on SNP sites
 vcf_file = AMP_SV.vcf
 out_path = SV_out
-tree_software = iqtree #构树软件，只能iqtree
-thread = 10 #线程数
+tree_software = iqtree # Tree construction software, only iqtree
+thread = 10 # Number of threads
 ```
 
-完成配置后，运行命令：phyloforge -S run.config构建基于基因组结构变异的系统发育树
+After completing the configuration, run the command: phyloforge -S run.config to build a phylogenetic tree based on genomic structural variations.
 
-### 3.结果文件说明
+### 3. Explanation of Result Files
 
 ```
 SV_out/
@@ -307,44 +313,44 @@ SV_out/
 ├── SV.contree
 ├── SV.iqtree
 ├── SV.log
-├── SV.matrix #VCF格式的SV数据转换来的矩阵，fasta格式
+├── SV.matrix # Matrix derived from VCF format SV data, in fasta format
 ├── SV.mldist
 ├── SV.model.gz
 ├── SV.parstree
 ├── SV.splits.nex
-└── SV.treefile #iqtree构建的ML树
-#其他文件为IQTREE运行产生的中间文件
+└── SV.treefile # ML tree constructed by iqtree
+
+Other files are intermediate files generated during iqtree execution.
 ```
 
-## 5.多进程基因树
+## 5. Multi-Process sequence Trees
 
-### 1.所需文件
+### 1. Required Files
 
-fasta格式的CDS序列文件，一个文件将生成一棵树，将所有文件存放于一个目录下
+fasta format CDS sequence files, one file will generate one tree, store all files in one directory
 
-### 4.运行参数配置说明
+### 4. Explanation of Running Parameters Configuration
 
 ```
-[gene_opt]
+Copy Code[gene_opt]
 in_path = path/to/cds_dir
 out_path = gene_test
 aln_software = clustalw/mafft/muscle
-seq = cds/pep/codon/codon1/codon2 #详见1.4
+seq = cds/pep/codon/codon1/codon2 # See 1.4 for details
 tree_software = fasttree/iqtree/raxml/treebest/
 thread = 10
 ```
 
-完成配置后，运行命令：phyloforge -g run.config构建基于细胞器编码基因的系统发育树
+After completing the configuration, run the command: phyloforge -g run.config to build a phylogenetic tree based on organellar-encoded genes.
 
-### 5.结果文件说明
+### 5. Explanation of Result Files
 
 ```
-gene_test/
+Copy Codegene_test/
 ├── 01_cds
 ├── 02_pep
 ├── 03_ID
 ├── 04_seq
 ├── 05_aln
-└── 06_tree #结果目录
+└── 06_tree # Result directory
 ```
-
