@@ -1,7 +1,7 @@
 """snp vcf to tree"""
 
 import sys
-
+import datetime
 from treetool import script
 from treetool.script import RunCmd
 cmd = script.RunCmd()
@@ -125,10 +125,27 @@ class SvTree(RunCmd):
                 f.writelines(fasta_str)
 
     def sv_tree(self):
-        self.convert_vcf_to_seq(self.vcf_file, f'{self.out_path}/SV.matrix')
+        current_time = datetime.datetime.now()
+        print(f"[{current_time.strftime('%Y-%m-%d %H:%M:%S')}] Converting a VCF file to a matrix...")
+        try:
+            self.convert_vcf_to_seq(self.vcf_file, f'{self.out_path}/SV.matrix')
+            current_time = datetime.datetime.now()
+            print(f"[{current_time.strftime('%Y-%m-%d %H:%M:%S')}] Finish Converting VCF file to matrix.")
+        except Exception:
+            current_time = datetime.datetime.now()
+            print(f"[{current_time.strftime('%Y-%m-%d %H:%M:%S')}] Failed to Convert VCF file to matrix, please check "
+                  f"input file!")
+            sys.exit(1)
         infile = f'{self.out_path}/SV.matrix'
+        current_time = datetime.datetime.now()
+        print(f"[{current_time.strftime('%Y-%m-%d %H:%M:%S')}] Constructing tree, this may take a long time...")
         if self.tree_software == "iqtree":
-            cmd.built_tree(infile, self.out_path, "SV", self.thread)
+            status = cmd.built_tree(infile, self.out_path, "SV", self.thread)
+            current_time = datetime.datetime.now()
+            if status == 0:
+                print(f"[{current_time.strftime('%Y-%m-%d %H:%M:%S')}] Finish constructing the SV tree.")
+            else:
+                print(f"[{current_time.strftime('%Y-%m-%d %H:%M:%S')}] SV tree failed to construct.")
         else:
-            print(f'tree_software: {self.tree_software} can not be recognized, please check it')
+            print(f'tree_software: {self.tree_software} can not be recognized, please check it. exit......')
             sys.exit()

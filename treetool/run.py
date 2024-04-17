@@ -10,11 +10,12 @@ import treetool
 
 
 def get_parser():
-    parser = argparse.ArgumentParser(description=f'''
-    TreeTool: A tool for multiple phylogenetic analyses
-    ***** https://github.com/wangyayaya/TreeTool *****''')
+    parser = argparse.ArgumentParser(description=f'''\
+    PhyloForge: Unifying micro and macro evolution with comprehensive genomic signals 
+    
+    ***** https://github.com/wangyayaya/PhyloForge *****''', formatter_class=argparse.RawTextHelpFormatter)
 
-    parser.add_argument("-l", "--lcn", type=str, dest='lcn_tree',
+    parser.add_argument("-l", "--lcn", type=str, dest='lcn_busco_tree',
                         help="construct phylogenetic tree based on low-copy nuclear genes ")
     parser.add_argument("-m", "--mul", type=str, dest='mul_tree',
                         help="construct phylogenetic tree based on low-copy nuclear genes (retain multiple copies)")
@@ -31,7 +32,7 @@ def get_parser():
     parser.add_argument("-gsc", action="store_true",
                         help="get the software configuration file: treetool -gsc >software.cfg")
     parser.add_argument("-sc", help="perform software configuration: treetool -sc software.cfg")
-    parser.add_argument("-v", "--version", action="version", version="treetool 测试版")
+    parser.add_argument("-v", "--version", action="version", version="phyloforge 1.0.0")
     args = parser.parse_args()
 
     if args.c:
@@ -48,9 +49,9 @@ def get_parser():
                 print(line, end='')
         sys.exit()
 
-    elif args.lcn_tree:
-        opt_cfg = args.lcn_tree
-        tree = 'lcn'
+    elif args.lcn_busco_tree:
+        opt_cfg = args.lcn_busco_tree
+        tree = 'lcn_busco'
 
     elif args.mul_tree:
         opt_cfg = args.mul_tree
@@ -106,7 +107,7 @@ def get_parser():
 
 def main():
     tree = get_parser()[1]
-    if tree == 'lcn' or tree == 'mul':
+    if tree == 'lcn_busco':
         import treetool.lcntree
         treetool.lcntree.LcnTree().lcn_tree()
     elif tree == 'snp':

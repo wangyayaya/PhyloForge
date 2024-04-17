@@ -6,7 +6,8 @@ mode to run
 3：from OGs to tree
 """
 import sys
-
+import os
+import datetime
 from treetool import script, hmm2OG
 from treetool.script import RunCmd
 
@@ -16,14 +17,31 @@ cmd = script.RunCmd()
 class LcnTree(RunCmd):
     def __init__(self):
         self.mode = 0
-        self.coa_con = 0
         super().__init__()
+        if self.retain_multi_copy == 'True':
+            self.retain_multi_copy = True
+            self.coa_con = 0
+            try:
+                os.path.abspath(os.path.dirname(self.astral_pro))
+            except AttributeError:
+                current_time = datetime.datetime.now()
+                print(f"[{current_time.strftime('%Y-%m-%d %H:%M:%S')}] If [retain_multi_copy = Ture], astral-pro "
+                      f"software is not configured, please refer to the README file for configuration.")
+                sys.exit(1)
+        else:
+            self.retain_multi_copy = False
 
     def HMM_OG(self):
-        if self.retain_multi_copy == 'F':
-            hmm2OG.HMM_OG().run_hmm2OG()
-        else:
+        if self.retain_multi_copy:
             hmm2OG.HMM_OG().run_hmm2OG_multi_copy()
+        else:
+            hmm2OG.HMM_OG().run_hmm2OG()
+
+    def ortho_OG(self):
+        if not self.retain_multi_copy:
+            hmm2OG.HMM_OG().ortho2OG(False)
+        else:
+            hmm2OG.HMM_OG.ortho2OG(True)
 
     def check(self):
         global n
@@ -68,32 +86,24 @@ class LcnTree(RunCmd):
 
     def run_mode0(self):
         """cds to species tree"""
-        statuss = cmd.run_hmmscan_pl()
-        # statuss = [0]
-        if any(status != 0 for status in statuss):
-            print("The hmmsearch program failed to run")
-            sys.exit(1)
-        else:
-            self.HMM_OG()
-            if int(self.coa_con) == 0:
-                cmd.run_genetree_mul()
-                cmd.run_astral()
-            elif int(self.coa_con) == 1:
-                cmd.run_genetree_mul()
-                cmd.run_astral()
+        cmd.run_hmmscan_pl()
+        self.HMM_OG()
+        if int(self.coa_con) == 0:
+            cmd.run_genetree_mul()
+            cmd.run_astral()
+        elif int(self.coa_con) == 1:
+            cmd.run_genetree_mul()
+            cmd.run_astral()
+            if not self.retain_multi_copy:
                 cmd.run_contree()
-            else:
-                print("The parameter coa_con must be selected between 1 and 2!")
-                sys.exit()
+        else:
+            print("The parameter coa_con must be selected between 0 and 1!")
+            sys.exit()
 
     def run_mode1(self):
         """cds to SOG/LOG"""
-        statuss = cmd.run_hmmscan_pl()
-        if any(status != 0 for status in statuss):
-            print("The hmmsearch program failed to run")
-            sys.exit(1)
-        else:
-            self.HMM_OG()
+        cmd.run_hmmscan_pl()
+        self.HMM_OG()
 
     def run_mode2(self):
         self.HMM_OG()

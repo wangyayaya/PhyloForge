@@ -4,6 +4,7 @@ import multiprocessing
 import re
 import shutil
 import sys
+import datetime
 import glob
 import warnings
 from configparser import ConfigParser
@@ -25,7 +26,6 @@ class RunCmd:
         self.cds_mrege = None
         self.pep_mrege = None
         self.codon_mrege = None
-        self.retain_multi_copy = 'F'
         self.out_path = os.getcwd()
 
         opt_cfg, tree = run.get_parser()[0], run.get_parser()[1]
@@ -34,8 +34,14 @@ class RunCmd:
             print("Exiting...")
             sys.exit(1)
 
-        if tree == 'lcn':
-            self.opt = self.get_config(opt_cfg, 'lcn_opt')
+        self.software_path = self.get_soft_path()
+        for k, v in self.software_path.items():
+            setattr(self, str(k).lower(), v)
+
+        # 把所有基于低拷贝的合并在一起
+        if tree == 'lcn_busco':
+            self.opt = self.get_config(opt_cfg, 'lcn_busco_opt')
+
         elif tree == 'organelle':
             self.opt = self.get_config(opt_cfg, 'organelle_opt')
         elif tree == 'snp':
@@ -47,15 +53,7 @@ class RunCmd:
             self.tree_software = 'iqtree'
         elif tree == 'gene':
             self.opt = self.get_config(opt_cfg, 'gene_opt')
-            self.retain_multi_copy = 'T'
-        elif tree == 'mul':
-            self.opt = self.get_config(opt_cfg, 'lcn_opt_m')
-            self.retain_multi_copy = 'T'
-            self.coa_con = 0
 
-        self.software_path = self.get_soft_path()
-        for k, v in self.software_path.items():
-            setattr(self, str(k).lower(), v)
         for k, v in self.opt.items():
             if 'software' in k:
                 setattr(self, str(k), v.lower())
@@ -116,6 +114,7 @@ class RunCmd:
 
     def check_software(self):
         """Iterate through each software in the profile to check if it is available"""
+        """这里用conda打包了，可以不用这个函数了"""
         for software_path in self.software_path.values():
             software_path = software_path.strip()
             if not os.path.exists(software_path):
@@ -135,8 +134,8 @@ class RunCmd:
 
     def mkdir(self):
         """make directory"""
-        out_dir = ['01_cds_format', '02_pep', '03_hmm_out', '04_OG', '05_seq/', '06_aln/01_aln', '06_aln/02_trim',
-                   '06_aln/03_trim_rename', '07_tree/01_coatree', '07_tree/02_contree', '08_result']
+        out_dir = ['01_cds_format', '02_pep', '03_hmm_out', '04_OG', '05_seq/', '06_aln/01_aln',
+                   '06_aln/02_trim', '06_aln/03_trim_rename', '07_tree/01_coatree', '07_tree/02_contree', '08_result']
         for d in out_dir:
             try:
                 os.makedirs(f"{self.out_path}/{d}")
@@ -187,22 +186,30 @@ class RunCmd:
                 new_id = f'>{base_name}|{raw_id}'.replace(':', '_')  # 基因ID中不能有冒号
                 cds = re.sub(r'[^ATCGUatcgu]', 'N', str(line.seq))  # 将非法字符替换为N
                 pep = line.seq.translate(table="Standard")
+                # 重新添加orthofinder后不能识别有些异常字符，所以这里需要再对pep再格式化 *暂未
                 print(f'{new_id}\n{cds}', file=cds_fm_out)
                 print(f'{new_id}\n{pep}', file=pep_out)
             except Exception:
                 print(f"Please check the input file: {in_file}, the sequence may have abnormal characters ")
                 pass
 
-
     # 多进程
     def run_format_and_trans(self):
         """Run the format_and_trans function in multiple processes"""
         in_path = self.in_path
         in_file_list = self.get_infile_list(in_path)
-        p = multiprocessing.Pool(int(self.thread))
-        p.map(self.format_and_trans, in_file_list)
-        p.close()
-        p.join()
+        file_count = len(os.listdir(in_path))
+        current_time = datetime.datetime.now()
+        print(f"[{current_time.strftime('%Y-%m-%d %H:%M:%S')}] Formatting and translating {file_count} CDS files...")
+        try:
+            p = multiprocessing.Pool(int(self.thread))
+            p.map(self.format_and_trans, in_file_list)
+            p.close()
+            p.join()
+            current_time = datetime.datetime.now()
+            print(f"[{current_time.strftime('%Y-%m-%d %H:%M:%S')}] Finish formatting and translating all CDS files.")
+        except Exception:
+            print(f"[{current_time.strftime('%Y-%m-%d %H:%M:%S')}] Failed to format and translate CDS files.")
 
     def rename_id(self, infile, outfile):
         """Keep only the species name part of the gene id in the sequence"""
@@ -215,53 +222,77 @@ class RunCmd:
                     f2.write(line)
 
     def run_command(self, command):
+        """上传conda后，明明hmmscan运行是成功的，还是会返回非0，而且也不报错，非常奇怪"""
         try:
-            output = subprocess.check_output(command, shell=True, stderr=subprocess.DEVNULL)
-            return 0, output.decode()
+            subprocess.check_output(command, shell=True, stderr=subprocess.DEVNULL)
+            return 0
         except subprocess.CalledProcessError as e:
             print(e)
             sys.exit(e.returncode)
-
 
     def HMMscan(self, infile):
         """Run hmmscan"""
         outfile = f"{self.out_path}/03_hmm_out/{os.path.splitext(os.path.split(infile)[1])[0]}.tbl"
         run = f'{self.hmmscan} --tblout {outfile} --noali -E 1e-50 --cpu 1 {self.orthodb} {infile}'
+
         if os.path.exists(outfile):
-            ok = False
             with open(outfile, 'r') as file:
                 lines = file.readlines()
                 for line in lines:
                     line = line.strip()
                     if "[ok]" in line:
-                        ok = True
-                if ok:
-                    status = 0
+                        status = 0
+                        break
                 else:
                     status = self.run_command(run)
-                    if status == 0:
-                        with open(outfile, 'a') as f:
-                            f.writelines("# [ok]")
         else:
             # run = f'echo {infile} > {outfile}'
             status = self.run_command(run)
-            if status == 0:
-                with open(outfile, 'a') as f:
-                    f.writelines("# [ok]")
-            # print(status)
+        if status != 0:
+            print(f'The file {infile} failed to run hmmsearch program!')
         return status
 
     def run_hmmscan_pl(self):
         """Run hmmscan in multiple processes"""
         self.mkdir()
         self.run_format_and_trans()
+        current_time = datetime.datetime.now()
+        print(f"[{current_time.strftime('%Y-%m-%d %H:%M:%S')}] Runing hmmscan program, this may take a long time...")
         infile_list = self.get_infile_list(self.out_path + '/02_pep')
         # print(infile_list)
         p = multiprocessing.Pool(int(self.thread))
         statuss = p.map(self.HMMscan, infile_list)
         p.close()
         p.join()
+        end_time = datetime.datetime.now()
+        if any(status != 0 for status in statuss):
+            print(f"[{end_time.strftime('%Y-%m-%d %H:%M:%S')}] The hmmscan program is finished."
+                  f"The above file fails to run. Please check and restart.")
+            sys.exit(1)
+        else:
+            print(f"[{end_time.strftime('%Y-%m-%d %H:%M:%S')}] The hmmscan program is successfully finished.")
         return statuss
+
+    def run_orthofinder(self):
+        # 只要跑orthofinder就将原文件全删掉，防止生成多个orthofinder的结果目录
+        current_time = datetime.datetime.now()
+        print(
+            f"[{current_time.strftime('%Y-%m-%d %H:%M:%S')}] Runing OrthoFinder program, this may take a long time...")
+        try:
+            shutil.rmtree(f'{self.out_path}/03_orthofinder')
+        except Exception:
+            pass
+        shutil.copytree(f"{self.out_path}/02_pep", f"{self.out_path}/03_orthofinder")
+        orthofinder_dir = f"{self.out_path}/03_orthofinder"
+        orthofinder_cmd = f'orthofinder -t {int(self.thread)} -f {orthofinder_dir} -og'
+        status = self.run_command(orthofinder_cmd)
+        end_time = datetime.datetime.now()
+        if status != 0:
+            print(f"{end_time.strftime('%Y-%m-%d %H:%M:%S')} The OrthoFinder program failed to run.")
+            sys.exit(1)
+        else:
+            print(f"{end_time.strftime('%Y-%m-%d %H:%M:%S')} The hmmscan program is successfully finished.")
+        return status
 
     def aln(self, infile, outfile):
         """Sequence alignment"""
@@ -278,7 +309,8 @@ class RunCmd:
         """Convert protein sequence alignment to codon"""
         run = f"{self.pal2nal} {alnfile} {cdsfile} -output fasta >{out}"
         # 提取密码子第几位 codon:不移除，codon1保留1，2位，condon2：保留第三位
-        return self.run_command(run)
+        status = self.run_command(run)
+        return status
 
     def codon_position_select(self, infile, outfile, pos):
         with open(infile) as f, open(outfile, 'w') as outfile:
@@ -326,7 +358,8 @@ class RunCmd:
                 run = f'{self.treebest} nj -b 1000  {infile} >{outpath}/{basename}_treebest.NHX'
             elif self.tree_software == 'phyml':
                 run = f'{self.phyml} -i {infile} -b 100 -m HKY85 -f m -v e -a e -o tlr'
-            self.run_command(run)
+            status = self.run_command(run)
+        return status
 
     def get_genetree(self, infile):
         """pipeline to Construct gene tree"""
@@ -346,7 +379,7 @@ class RunCmd:
                 self.get_seq_by_id(infile, self.pep_mrege, seq)
             self.aln(seq, aln)
             self.trim(aln, trim)
-            if self.retain_multi_copy.upper() == 'F':
+            if not self.retain_multi_copy:
                 self.rename_id(trim, trim_rename)
                 self.built_tree(trim_rename, tree_path, basename, 2)
             else:
@@ -379,7 +412,7 @@ class RunCmd:
                     pass
 
                 self.trim(codon_seq, trim)
-                if self.retain_multi_copy.upper() == 'F':
+                if not self.retain_multi_copy:
                     self.rename_id(trim, trim_rename)
                     self.built_tree(trim_rename, tree_path, f"{basename}_{self.seq}", 2)
                 else:
@@ -406,6 +439,9 @@ class RunCmd:
     def run_genetree_mul(self):
         """Multiprocess construct trees"""
         """一开始只考虑做lcn，这个脚本中很多函数不太好利用"""
+        current_time = datetime.datetime.now()
+        print(f"[{current_time.strftime('%Y-%m-%d %H:%M:%S')}] Constructing trees...")
+
         OG_list = self.get_infile_list(f"{self.out_path}/04_OG/")
         # 删除过去跑出的树及比对后后序列，防止续跑时前面的结果影响
         dir_list = ['05_seq/', '06_aln/01_aln', '06_aln/02_trim', '06_aln/03_trim_rename',
@@ -418,8 +454,7 @@ class RunCmd:
             os.mkdir(f'{self.out_path}/{dir}')
 
         if len(OG_list) <= 0:
-            print("The number of OGs is 0, please adjust the cover and gene_number parameter to get the appropriate "
-                  "number of OGs, then set mode as 2 to start constructing the species tree.")
+            print("The number of OGs is 0, exit......")
             sys.exit()
         else:
             # print(infile_list)
@@ -459,16 +494,27 @@ class RunCmd:
         merge_gene_trees = self.merge_gene_trees(f"{self.out_path}/07_tree/01_coatree", f"{self.out_path}/08_result",
                                                  self.tree_software)
 
-        if self.retain_multi_copy.upper() == 'F':
+        if not self.retain_multi_copy:
             run = f'{self.astral} -i {merge_gene_trees} -r 100 -o ' \
                   f'{self.out_path}/08_result/coalescent-based_{self.seq.lower()}_{self.tree_software}.nwk'
         else:
-            absp_astral = os.path.abspath(os.path.dirname(self.astral_pro))
-            astrallib = os.path.join(absp_astral, 'lib')
+            try:
+                absp_astral = os.path.abspath(os.path.dirname(self.astral_pro))
+                astrallib = os.path.join(absp_astral, 'lib')
+            except AttributeError:
+                current_time = datetime.datetime.now()
+                print(f"[{current_time.strftime('%Y-%m-%d %H:%M:%S')}] Failed to run astral program, because "
+                      f"astral-pro software is not configured, please refer to the README file for configuration.")
+                sys.exit(1)
             run = f'java -Djava.library.path={astrallib} -jar {self.astral_pro} -i {merge_gene_trees} ' \
                   f'-o {self.out_path}/08_result/coalescent-based_{self.seq.lower()}_{self.tree_software}_mcl.nwk ' \
                   f'-a {self.out_path}/map.txt'
-        return self.run_command(run)
+        status = self.run_command(run)
+        if status == 0:
+            current_time = datetime.datetime.now()
+            print(f"[{current_time.strftime('%Y-%m-%d %H:%M:%S')}] Finish constructing the coalescent-based tree.")
+        else:
+            print(status)
 
     def get_super_gene(self):
         """将trim_rename后的每个OG串联为super gene， 为确保每个物种序列长度一致，当某个OG中物种覆盖率不是100%时，
@@ -511,7 +557,7 @@ class RunCmd:
     def run_contree(self):
         """Construct Concatenation tree"""
         supergene, seq_type = self.get_super_gene()
-        self.built_tree(supergene, f'{self.out_path}/07_tree/02_contree', seq_type, self.thread)
+        status = self.built_tree(supergene, f'{self.out_path}/07_tree/02_contree', seq_type, self.thread)
         if self.tree_software.upper() == "FASTTREE":
             shutil.copyfile(f'{self.out_path}/07_tree/02_contree/{seq_type}.tre',
                             f'{self.out_path}/08_result/{seq_type}_fasttree.nwk')
@@ -524,3 +570,6 @@ class RunCmd:
                             f'{self.out_path}/08_result/{seq_type}_RAxML_bipartitions.nwk')
             shutil.copyfile(f'{self.out_path}/07_tree/02_contree/RAxML_bipartitionsBranchLabels.{seq_type}',
                             f'{self.out_path}/08_result/{seq_type}_RAxML_bipartitionsBranchLabels.nwk')
+        if status == 0:
+            current_time = datetime.datetime.now()
+            print(f"[{current_time.strftime('%Y-%m-%d %H:%M:%S')}] Finish constructing the concatenation tree.")

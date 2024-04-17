@@ -1,16 +1,18 @@
 import os
 import multiprocessing
 import shutil
+import datetime
 
 from treetool.script import RunCmd
 
 
+# 筛选hmmscan结果到OG，新加orthofinder结果到OG
 class HMM_OG(RunCmd):
     def __init__(self):
         super().__init__()
 
         self.raw_path = f'{self.in_path}'
-        self.in_path = f'{self.out_path}/03_hmm_out'
+        self.hmm_in_path = f'{self.out_path}/03_hmm_out'
         self.og_out_path = f'{self.out_path}/04_OG'
 
         # 防止每次运行生成的OGs扰乱本次结果，每次都将原OGs删掉再筛选OGs
@@ -34,6 +36,9 @@ class HMM_OG(RunCmd):
         except AttributeError:
             self.copy_number = 1
 
+        current_time = datetime.datetime.now()
+        print(f"[{current_time.strftime('%Y-%m-%d %H:%M:%S')}] Selecting OGs...")
+
     def get_file_paths(self):
         """这里输入文件改成与原输入文件对应，这样就可以在原输入目录中增删文件实现续跑"""
         file_list = [f for f in os.listdir(self.raw_path)]
@@ -46,7 +51,7 @@ class HMM_OG(RunCmd):
         file_paths = []
         for file in base_name_list:
             file = f'{file}.tbl'
-            file_paths.append(os.path.join(self.in_path, file))
+            file_paths.append(os.path.join(self.hmm_in_path, file))
         return file_paths
 
     def get_all_busco_id(self):
@@ -134,6 +139,14 @@ class HMM_OG(RunCmd):
         best_match_list = self.get_all_best_match()
         with multiprocessing.Pool(int(self.thread)) as pool:
             pool.starmap(self.save_best_match_to_file, [(busco_id, best_match_list) for busco_id in all_busco_id])
+        if not os.listdir(self.og_out_path):
+            print(f"The number of selected OGs is 0. Please adjust the cover parameter or copy_number parameter, "
+                  f"change the mode parameter to 2, and rerun the task until an appropriate number of OGs is selected."
+                  f"The selected OGs can be viewed in {self.og_out_path}. ")
+        else:
+            file_count = len(os.listdir(self.og_out_path))
+            current_time = datetime.datetime.now()
+            print(f"[{current_time.strftime('%Y-%m-%d %H:%M:%S')}] A total of {file_count} OGs were filtered out. ")
 
     def run_hmm2OG_multi_copy(self):
         # 把所有结果转换为一个列表result：[{OG1:sp1:[gene1, gene2],sp2:[gene1, gene2]},OG2:{……},OG3:{……}]
@@ -180,4 +193,57 @@ class HMM_OG(RunCmd):
                                 # 保留基因及其对应物种名，后续astral-pro合并需要用到
                                 ### astral-pro直接合并基因树问题太多了……
                                 print(f'{gene}\t{species_name}', file=f2)
+        if not os.listdir(self.og_out_path):
+            print(f"The number of selected OGs is 0. Please adjust the cover parameter or copy_number parameter, "
+                  f"change the mode parameter to 2, and rerun the task until an appropriate number of OGs is selected."
+                  f"The selected OGs can be viewed in {self.og_out_path}.")
+        else:
+            file_count = len(os.listdir(self.og_out_path))
+            current_time = datetime.datetime.now()
+            print(f"[{current_time.strftime('%Y-%m-%d %H:%M:%S')}] A total of {file_count} OGs were filtered out.")
         return result
+
+    def ortho2OG(self, retain_multcopy):
+        or_path = f'{self.out_path}/03_orthofinder'
+        for item in os.listdir(or_path):
+            if os.path.isdir(os.path.join(or_path, item)) and item.startswith('Results_'):
+                or_result_dir = item
+
+        with open(f"{or_result_dir}/Orthogroups/Orthogroups.tsv") as f:
+            next(f)
+            for l in f.readlines():
+                cover_tmp = 0
+                line = l.split('\t')
+                for gene in line[1:]:
+                    gene = gene.strip().split(',')
+                    if len(gene) <= self.copy_number:
+                        if len(gene) == 1:
+                            if gene[0] == '':
+                                pass
+                            else:
+                                cover_tmp += 1
+                        else:
+                            cover_tmp += 1
+
+                # 保留多拷贝基因做树这样就算完成了，保留单拷贝的话就保留第一个
+                if cover_tmp >= self.cover:
+                    with open(f'{self.og_out_path}/{line[0]}', 'w') as fw:
+                        for gene in line[1:]:
+                            gene = gene.strip().split(',')
+                            if len(gene) <= self.copy_number:
+                                if gene[0] == '':
+                                    pass
+                                else:
+                                    if retain_multcopy:
+                                        for id in gene:
+                                            print(id.strip(), file=fw)
+                                    else:
+                                        print(gene[0], file=fw)
+        if not os.listdir(self.og_out_path):
+            print(f"The number of selected OGs is 0. Please adjust the cover parameter or copy_number parameter, "
+                  f"change the mode parameter to 2, and rerun the task until an appropriate number of OGs is selected."
+                  f"The selected OGs can be viewed in {self.og_out_path}.")
+        else:
+            file_count = len(os.listdir(self.og_out_path))
+            current_time = datetime.datetime.now()
+            print(f"[{current_time.strftime('%Y-%m-%d %H:%M:%S')}] A total of {file_count} OGs were filtered out.")

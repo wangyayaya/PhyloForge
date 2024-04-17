@@ -1,6 +1,10 @@
 """snp vcf to tree"""
 import re
 import os
+import shutil
+import datetime
+import sys
+
 from Bio import SeqIO
 import multiprocessing
 from treetool import script
@@ -15,6 +19,8 @@ class VcfTree(RunCmd):
             os.makedirs(f"{self.out_path}/working_dir")
             self.working_dir = os.path.abspath(f"{self.out_path}/working_dir")
         except OSError:
+            shutil.rmtree(f"{self.out_path}/working_dir")
+            os.makedirs(f"{self.out_path}/working_dir")
             self.working_dir = os.path.abspath(f"{self.out_path}/working_dir")
 
     def generate_ambiguous_code(self, base1, base2):
@@ -204,17 +210,36 @@ class VcfTree(RunCmd):
         return new_file_list
 
     def snp_tree(self):
+        current_time = datetime.datetime.now()
+        print(f"[{current_time.strftime('%Y-%m-%d %H:%M:%S')}] Converting a VCF file to a base sequence...")
         basename = 'SNP'
         splitfiles = self.cutFile(self.vcf_file, int(self.thread), self.working_dir)
         fa_list = self.change_file_extension(splitfiles, '.fa')
-        p = multiprocessing.Pool(int(self.thread))
-        p.map(self.convert_vcf_to_seq, splitfiles)
+        try:
+            p = multiprocessing.Pool(int(self.thread))
+            p.map(self.convert_vcf_to_seq, splitfiles)
+            current_time = datetime.datetime.now()
+            print(f"[{current_time.strftime('%Y-%m-%d %H:%M:%S')}] Finish Converting a VCF file to a base sequence.")
+        except Exception:
+            current_time = datetime.datetime.now()
+            print(f"[{current_time.strftime('%Y-%m-%d %H:%M:%S')}] Failed to Convert VCF file to base sequence, "
+                  f"please check the input file!")
+            sys.exit(1)
+
         if self.tree_software.upper() == 'TREEBEST' or 'FASTTREE':
             self.merge_seq(fa_list, f'{self.out_path}/all_snp', 'fa')
             infile = f'{self.out_path}/all_snp.fa'
         else:
             self.merge_seq(fa_list, f'{self.out_path}/all_snp', 'phylip')
             infile = f'{self.out_path}/all_snp.phy'
-        cmd.built_tree(infile, f'{self.out_path}', basename, 1)
+
+        current_time = datetime.datetime.now()
+        print(f"[{current_time.strftime('%Y-%m-%d %H:%M:%S')}] Constructing tree...")
+        status = cmd.built_tree(infile, f'{self.out_path}', basename, 1)
+        if status == 0:
+            print(f"[{current_time.strftime('%Y-%m-%d %H:%M:%S')}] Finish constructing the SNP tree.")
+        else:
+            print(f"[{current_time.strftime('%Y-%m-%d %H:%M:%S')}] SNP tree failed to construct.")
+
 
 

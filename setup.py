@@ -17,7 +17,7 @@ setup(
     license="BSD License",
     long_description=long_description,
     long_description_content_type="text/markdown",
-    url="https://github.com/wangyayaya/TreeTool/",
+    url="https://github.com/wangyayaya/PhyloForge/",
     packages=find_packages(),
     package_data={'': ['*.config', '*.cfg', '*.ini']},
     classifiers=[
