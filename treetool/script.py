@@ -39,9 +39,8 @@ class RunCmd:
             setattr(self, str(k).lower(), v)
 
         # 把所有基于低拷贝的合并在一起
-        if tree == 'lcn_busco':
-            self.opt = self.get_config(opt_cfg, 'lcn_busco_opt')
-
+        if tree == 'lcn':
+            self.opt = self.get_config(opt_cfg, 'lcn_opt')
         elif tree == 'organelle':
             self.opt = self.get_config(opt_cfg, 'organelle_opt')
         elif tree == 'snp':
@@ -53,6 +52,7 @@ class RunCmd:
             self.tree_software = 'iqtree'
         elif tree == 'gene':
             self.opt = self.get_config(opt_cfg, 'gene_opt')
+            self.retain_multi_copy = True
 
         for k, v in self.opt.items():
             if 'software' in k:
@@ -80,22 +80,22 @@ class RunCmd:
             print('The tree_software is not specified, raxml software will be used for lcn/organelle/whole_genome'
                   'iqtree software will be used for sv, treebest software will be used for snp')
 
-        try:
-            if str(self.aln_software) not in ['mafft', 'muscle', 'clustalw']:
-                print(f'The aln_software: {self.aln_software} is not recognized, and MAFFT will be used for sequence '
-                      f'alignment')
-                self.aln_software = 'mafft'
-        except AttributeError:
-            print('Sequence alignment software is not specified, MAFFT will be used for sequence alignment')
-
-        try:
-            if str(self.seq).upper() not in ["CDS", "PEP", "CODON", "CODON1", "CODON2"]:
-                print(f'The seq: {self.seq} is not recognized, and CDS will be used')
-                self.seq = 'cds'
-        except AttributeError:
-            print('The seq is not specified, and CDS will be used')
-
-        self.check_software()  # 运行时先检查软件是否可用
+        if tree == 'lcn':
+            try:
+                if str(self.retain_multi_copy).upper() == 'TRUE':
+                    self.retain_multi_copy = True
+                    self.coa_con = 0
+                    try:
+                        os.path.abspath(os.path.dirname(self.astral_pro))
+                    except AttributeError:
+                        current_time = datetime.datetime.now()
+                        print(f"[{current_time.strftime('%Y-%m-%d %H:%M:%S')}] If [retain_multi_copy = Ture], astral-pro "
+                              f"software must be configured, please refer to the README file for configuration.")
+                        sys.exit(1)
+                else:
+                    self.retain_multi_copy = False
+            except AttributeError:
+                self.retain_multi_copy = False
 
     def get_config(self, opt_cfg, opt):
         cfg_parser = ConfigParser()
@@ -275,6 +275,8 @@ class RunCmd:
 
     def run_orthofinder(self):
         # 只要跑orthofinder就将原文件全删掉，防止生成多个orthofinder的结果目录
+        self.mkdir()
+        self.run_format_and_trans()
         current_time = datetime.datetime.now()
         print(
             f"[{current_time.strftime('%Y-%m-%d %H:%M:%S')}] Runing OrthoFinder program, this may take a long time...")
@@ -284,14 +286,14 @@ class RunCmd:
             pass
         shutil.copytree(f"{self.out_path}/02_pep", f"{self.out_path}/03_orthofinder")
         orthofinder_dir = f"{self.out_path}/03_orthofinder"
-        orthofinder_cmd = f'orthofinder -t {int(self.thread)} -f {orthofinder_dir} -og'
+        orthofinder_cmd = f'orthofinder -t {int(self.thread)} -f {orthofinder_dir} -S diamond -og'
         status = self.run_command(orthofinder_cmd)
         end_time = datetime.datetime.now()
         if status != 0:
             print(f"{end_time.strftime('%Y-%m-%d %H:%M:%S')} The OrthoFinder program failed to run.")
             sys.exit(1)
         else:
-            print(f"{end_time.strftime('%Y-%m-%d %H:%M:%S')} The hmmscan program is successfully finished.")
+            print(f"[{end_time.strftime('%Y-%m-%d %H:%M:%S')}] The OrthoFinder program is successfully finished.")
         return status
 
     def aln(self, infile, outfile):
@@ -493,19 +495,12 @@ class RunCmd:
         """Construct Coalescence tree"""
         merge_gene_trees = self.merge_gene_trees(f"{self.out_path}/07_tree/01_coatree", f"{self.out_path}/08_result",
                                                  self.tree_software)
-
         if not self.retain_multi_copy:
             run = f'{self.astral} -i {merge_gene_trees} -r 100 -o ' \
                   f'{self.out_path}/08_result/coalescent-based_{self.seq.lower()}_{self.tree_software}.nwk'
         else:
-            try:
-                absp_astral = os.path.abspath(os.path.dirname(self.astral_pro))
-                astrallib = os.path.join(absp_astral, 'lib')
-            except AttributeError:
-                current_time = datetime.datetime.now()
-                print(f"[{current_time.strftime('%Y-%m-%d %H:%M:%S')}] Failed to run astral program, because "
-                      f"astral-pro software is not configured, please refer to the README file for configuration.")
-                sys.exit(1)
+            absp_astral = os.path.abspath(os.path.dirname(self.astral_pro))
+            astrallib = os.path.join(absp_astral, 'lib')
             run = f'java -Djava.library.path={astrallib} -jar {self.astral_pro} -i {merge_gene_trees} ' \
                   f'-o {self.out_path}/08_result/coalescent-based_{self.seq.lower()}_{self.tree_software}_mcl.nwk ' \
                   f'-a {self.out_path}/map.txt'

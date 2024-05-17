@@ -163,7 +163,7 @@ class VcfTree(RunCmd):
                 sequence_length = len(next(iter(sequences.values())))
                 file.write(f'{num_sequences} {sequence_length}\n')
                 for sequence_id, sequence in sequences.items():
-                    file.write(f'{sequence_id:<10}{sequence}\n')
+                    file.write(f'{sequence_id}  {sequence}\n')
         else:
             out_f = out_file + '.fa'
             with open(out_f, "w") as f:
@@ -226,12 +226,13 @@ class VcfTree(RunCmd):
                   f"please check the input file!")
             sys.exit(1)
 
-        if self.tree_software.upper() == 'TREEBEST' or 'FASTTREE':
+        if self.tree_software.upper() == 'TREEBEST' or self.tree_software.upper() == 'FASTTREE':
             self.merge_seq(fa_list, f'{self.out_path}/all_snp', 'fa')
             infile = f'{self.out_path}/all_snp.fa'
         else:
             self.merge_seq(fa_list, f'{self.out_path}/all_snp', 'phylip')
             infile = f'{self.out_path}/all_snp.phy'
+            print(infile)
 
         current_time = datetime.datetime.now()
         print(f"[{current_time.strftime('%Y-%m-%d %H:%M:%S')}] Constructing tree...")

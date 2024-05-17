@@ -18,30 +18,24 @@ class LcnTree(RunCmd):
     def __init__(self):
         self.mode = 0
         super().__init__()
-        if self.retain_multi_copy == 'True':
-            self.retain_multi_copy = True
-            self.coa_con = 0
-            try:
-                os.path.abspath(os.path.dirname(self.astral_pro))
-            except AttributeError:
-                current_time = datetime.datetime.now()
-                print(f"[{current_time.strftime('%Y-%m-%d %H:%M:%S')}] If [retain_multi_copy = Ture], astral-pro "
-                      f"software is not configured, please refer to the README file for configuration.")
-                sys.exit(1)
-        else:
-            self.retain_multi_copy = False
 
-    def HMM_OG(self):
-        if self.retain_multi_copy:
-            hmm2OG.HMM_OG().run_hmm2OG_multi_copy()
+    def To_OG(self):
+        if str(self.lcn_method).lower() == 'orthofinder':
+            if not self.retain_multi_copy:
+                hmm2OG.HMM_OG().ortho2OG(retain_mult_copy=False)
+            else:
+                hmm2OG.HMM_OG().ortho2OG(retain_mult_copy=True)
         else:
-            hmm2OG.HMM_OG().run_hmm2OG()
+            if self.retain_multi_copy:
+                hmm2OG.HMM_OG().run_hmm2OG_multi_copy()
+            else:
+                hmm2OG.HMM_OG().run_hmm2OG()
 
-    def ortho_OG(self):
-        if not self.retain_multi_copy:
-            hmm2OG.HMM_OG().ortho2OG(False)
+    def run_hmm_orthofinder(self):
+        if str(self.lcn_method).lower() == 'orthofinder':
+            cmd.run_orthofinder()
         else:
-            hmm2OG.HMM_OG.ortho2OG(True)
+            cmd.run_hmmscan_pl()
 
     def check(self):
         global n
@@ -86,8 +80,8 @@ class LcnTree(RunCmd):
 
     def run_mode0(self):
         """cds to species tree"""
-        cmd.run_hmmscan_pl()
-        self.HMM_OG()
+        self.run_hmm_orthofinder()
+        self.To_OG()
         if int(self.coa_con) == 0:
             cmd.run_genetree_mul()
             cmd.run_astral()
@@ -102,11 +96,11 @@ class LcnTree(RunCmd):
 
     def run_mode1(self):
         """cds to SOG/LOG"""
-        cmd.run_hmmscan_pl()
-        self.HMM_OG()
+        self.run_hmm_orthofinder()
+        self.To_OG()
 
     def run_mode2(self):
-        self.HMM_OG()
+        self.To_OG()
 
     def run_mode3(self):
         """OG to tree"""

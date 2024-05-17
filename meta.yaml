@@ -1,0 +1,51 @@
+package:
+  name: phyloforge
+  version: "1.0.0"
+
+source:
+  path: /home/wangy/wy/treetool_recipe
+  #git_url: https://github.com/wangyayaya/PhyloForge.git
+
+build:
+  number: 0
+
+requirements:
+  build:
+    - python
+    - setuptools
+    - pip
+  run:
+    - python
+    - biopython
+    - raxml
+    - fasttree
+    - phyml
+    - iqtree
+    - treebest
+    - mafft
+    - muscle
+    - clustalw
+    - astral-tree
+    - pal2nal
+    - hmmer
+    - trimal
+    - orthofinder
+
+channels:
+  - conda-forge
+  - bioconda
+
+about:
+  home: https://github.com/wangyayaya/PhyloForge/
+  license: BSD License
+  summary: An innovative and robust toolkit for phylogenetics
+  description: |
+    PhyloForge: Unifying micro and macro evolution with comprehensive genomic signals
+
+test:
+  commands:
+    - phyloforge --version
+
+extra:
+  recipe-maintainers:
+    - Ya Wang <1552082076@qq.com>

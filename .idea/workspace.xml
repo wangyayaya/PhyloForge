@@ -5,12 +5,14 @@
   </component>
   <component name="ChangeListManager">
     <list default="true" id="999a25ce-b0be-4919-b099-f9ec276f4a55" name="Changes" comment="">
-      <change beforePath="$PROJECT_DIR$/.idea/.gitignore" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/.idea/Species_Tree.iml" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/.idea/modules.xml" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/.idea/vcs.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/vcs.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/build.sh" beforeDir="false" afterPath="$PROJECT_DIR$/build.sh" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/meta.yaml" beforeDir="false" afterPath="$PROJECT_DIR$/meta.yaml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/treetool/cfg/run.config" beforeDir="false" afterPath="$PROJECT_DIR$/treetool/cfg/run.config" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/treetool/genetree.py" beforeDir="false" afterPath="$PROJECT_DIR$/treetool/genetree.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/treetool/hmm2OG.py" beforeDir="false" afterPath="$PROJECT_DIR$/treetool/hmm2OG.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/treetool/lcntree.py" beforeDir="false" afterPath="$PROJECT_DIR$/treetool/lcntree.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/treetool/run.py" beforeDir="false" afterPath="$PROJECT_DIR$/treetool/run.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/treetool/script.py" beforeDir="false" afterPath="$PROJECT_DIR$/treetool/script.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/treetool/vcftree.py" beforeDir="false" afterPath="$PROJECT_DIR$/treetool/vcftree.py" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -49,11 +51,15 @@
   <component name="PropertiesComponent">{
   &quot;keyToString&quot;: {
     &quot;RunOnceActivity.ShowReadmeOnStart&quot;: &quot;true&quot;,
+    &quot;last_opened_file_path&quot;: &quot;C:/Users/dell/Desktop/script&quot;,
     &quot;run.code.analysis.last.selected.profile&quot;: &quot;aDefault&quot;,
     &quot;settings.editor.selected.configurable&quot;: &quot;com.jetbrains.python.configuration.PyActiveSdkModuleConfigurable&quot;
   }
 }</component>
   <component name="RecentsManager">
+    <key name="CopyFile.RECENT_KEYS">
+      <recent name="C:\Users\dell\Desktop\script" />
+    </key>
     <key name="MoveFile.RECENT_KEYS">
       <recent name="D:\WANG\Species_Tree\Species_Tree\est" />
       <recent name="D:\WANG\Species_Tree\Species_Tree\snptree" />

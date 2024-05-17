@@ -1,28 +1,30 @@
 # PhyloForge
 
-PhyloForge is a collection of phylogenetic analysis tools that can fulfill various research needs. It enables phylogenetic analysis for both microevolution and macroevolution of species, as well as sequence evolution.
+PhyloForge is a collection of tools for phylogenetic analysis that can meet various usage needs, allowing for systematic phylogenetic analysis of microevolution, macroevolution of species, and sequence evolution.
 
-For macroevolution, PhyloForge allows multi-species phylogenetic analysis based on genomic CDS (coding sequence), organellar CDS, and organellar whole genome sequences. For microevolution, PhyloForge supports population phylogenetic analysis based on SNP (single nucleotide polymorphism) sites or structural variations (SV). Lastly, PhyloForge facilitates batch sequence-based phylogenetic analysis.
+For macroevolution, PhyloForge can perform multi-species phylogenetic analysis based on genome CDS, organelle-encoded gene CDS, and organelle whole-genome sequences. For microevolution, PhyloForge can conduct population phylogenetic analysis based on SNP sites or SV. Lastly, PhyloForge can perform batch sequence-based phylogenetic analysis.
 
-## Software Installation
+## Software Installation:
 
-This software can be installed using conda, with the requirement of python=3.11 or 3.12.
+This software can be installed via conda:
 
-```shell
-$ conda install -c wangxiaobei phyloforge
+```
+$ conda create -n phyloforge_test -c wangxiaobei phyloforge
+$ conda activate phyloforge_test
 ```
 
-## 1. Building phylogenetic trees based on low-copy nuclear gene CDS sequences
+## 1. Building Phylogenetic Trees Based on Low-Copy Nuclear Genome CDS Sequences
 
-### 1.1 Single-copy gene tree construction mode
+### 1.1 Single-Copy Gene Tree Construction Mode
 
-#### 1. Required files
+#### 1. Required Files
 
-1. Species CDS sequences for constructing the species tree (It is recommended to keep only the longest transcript for each gene). These sequences should be stored in a folder, and the species CDS files are suggested to be named as "genus_species.cds" (fa/fas/fasta), where "genus_species" represents the species name in the final species tree. The gene names should have a distinguishable short ID and should not contain characters such as "|" or ":" or "(" ")" or be purely numeric.
+This process requires two user-provided files:
 
-2. BUSCO core gene set corresponding to the species used for constructing the species tree. This file can be obtained and processed using the following steps:
+1. Species CDS sequences for the species tree construction (it is recommended to keep only the longest transcript for each gene), stored in a folder. The species CDS files are suggested to be named as genus_species.cds (fa/fas/fasta), with genus_species used as the species name in the final species tree. The gene name should have a distinguishable short ID, without characters such as "|" or ":" and "(", ")" or pure numbers.
+2. BUSCO core gene set corresponding to the species for species tree construction. This file can be obtained and processed as follows:
 
-Visit the BUSCO database: [Index of /v5/data/lineages/ (ezlab.org)](https://busco-data.ezlab.org/v5/data/lineages/) or https://busco-archive.ezlab.org/v3/ to download the dataset corresponding to the species. For example, for angiosperms, you can download the Embryophyta (odb10) core gene set：
+Visit the BUSCO database: [Index of /v5/data/lineages/ (ezlab.org)](https://busco-data.ezlab.org/v5/data/lineages/) or https://busco-archive.ezlab.org/v3/. Download the dataset corresponding to the species, for example, for angiosperms generally download the Embryophyta (Embryophyta odb10) core gene set:
 
 ```shell
 $ wget -c https://busco-archive.ezlab.org/v3/datasets/prerelease/embryophyta_odb10.tar.gz -O embryophyta_odb10.tar.gz
@@ -30,113 +32,110 @@ $ tar -zxvf embryophyta_odb10.tar.gz
 $ cd embryophyta_odb10
 $ cat hmms/*.hmm >embryophyta_odb10.hmm
 $ hmmpress embryophyta_odb10.hmm
-# Obtain the path for "embryophyta_odb10.hmm" and write it into the corresponding configuration file.
+# Obtain the path to embryophyta_odb10.hmm and write it into the corresponding configuration file
 $ realpath embryophyta_odb10.hmm
 ```
 
-#### 2. Explanation of Running Parameters Configuration
+#### 2. Explanation of Runtime Parameter Configuration
 
-You can obtain the configuration file by using "phyloforge -c > run.config".
-
-Explanation of parameters in run.config:
+The configuration file can be obtained by running phyloforge -c >run.config
 
 ```
-[lcn_opt] # Constructing trees based on low-copy/single-copy nuclear genes
-in_path = D:\WANG\Species_Tree\cs\ # Directory for CDS files
-out_path = D:\WANG\Species_Tree\Species_Tree\out\  # Output directory for results
-thread = int(>=2) # Number of threads, default is 10, minimum is 2
-orthodb = ~/database/fungi_odb9/fungi_odb9.hmm  # Path to the BUSCO database, see section 1.1 for reference
-aln_software = muscle/mafft/clustalw # Sequence alignment software, default is mafft
-tree_software = iqtree/fasttree/raxml # Tree construction software, default is raxml
-cover = 7 # Number of species in each OG, when the total number of species in the tree is 100, choosing a parameter of 50 means that each OG has a coverage of at least 50%. Default is the total number of species, i.e., 100% species coverage
-copy_number = 1/2/3…… # Gene copy number, 1: single-copy, 2 or more: low-copy, default is 1
-mode = 0 # Select the running mode, default is 0
-#0: Run the entire process from CDS to tree
-#1: Run from CDS to preliminary selection of OGs (to determine if the number of OGs is appropriate)
-#2: Run the step of selecting OGs separately (to select the appropriate number of OGs)
-#3: Run the entire subsequent steps from selected OGs to tree
-seq = cds/pep/codon/codon1/condon2 # Choose the type of sequence used to construct the species tree, default is cds.codon1: retain the first and second positions of the codon, codon2: retain the third position of the codon
-#Note that when using codon for tree construction, not all sequences can be converted to codons, so the actual number of OGs used for tree construction may be less than the selected number. You can use ls out_path/06_aln/02_trim|wc -l to check the actual number of OGs used for tree construction
-coa_con = 0/1 # Choose to construct either concatenated trees or coalescent trees, 0: only construct concatenated trees, 1: construct both concatenated and coalescent trees
+Copy Code[lcn_opt]
+in_path = ~/ST/test/cds/
+out_path = ~/ST/test/out/
+thread = int
+orthoDB = ~/datasets/embryophyta_odb10/embryophyta_odb10.hmm
+cover = int <= number of species
+aln_software = mafft/muscle/clustalw
+tree_software = raxml/iqtree/fasttree
+copy_number = int
+mode = 0/1/2/3
+coa_con = 0/1
+seq = codon/pep/cds
+retain_multi_copy = True/False
+lcn_method = busco/orthofinder
 ```
 
-After completing the configuration, run the command: phyloforge -l run.config to construct the phylogenetic tree based on low-copy nuclear genes.
+Explanation of run.config parameters:
+
+```
+Copy Code[in_path = D:\WANG\Species_Tree\cs\] #directory of cds files
+[out_path = D:\WANG\Species_Tree\Species_Tree\out\ ] #output directory for results
+[thread = int(>=2)] #number of threads, default is 10 and minimum is 2
+[orthodb = ~/database/fungi_odb9/fungi_odb9.hmm]  #path to busco database, required when [lcn_method = busco]
+[aln_software = muscle/mafft/clustalw] #sequence alignment software, default is mafft
+[tree_software = iqtree/fasttree/raxml] #phylogenetic tree construction software, default is raxmal 
+[cover = 7] #number of species in each OG, assuming 100 species in the tree, if this parameter is set to 50, it means each OG has at least 50% coverage. Default is the number of species, which means 100% coverage.
+[copy_number = 1/2/3……] #number of gene copies, 1: single copy, 2 or more: low copy number, default is 1
+[mode = 0/1/2/3] #select running mode, default is 0
+#0: run the entire workflow from cds to tree
+#1: run from cds to screened OGs (preliminary judgment on the number of OGs)
+#2: run the step of screening OGs separately (screen out appropriate number of OGs)
+#3: run the full steps after screening OGs, from OGs to tree
+[seq = cds/pep/codon/codon1/condon2] #select the type of sequence used to construct the species tree, default is cds.codon1 which preserves codon positions 1 and 2; codon2 preserves the 3rd position
+#Note that when selecting codon to build the tree, not all sequences can be converted into codons, so the actual number of OGs used for the tree may be less than the number of OGs screened. You can use ls out_path/06_aln/02_trim | wc -l to check the actual number of OGs used for the tree
+[coa_con = 0/1] #select whether to build parallel or concatenated trees, 0: only build parallel trees, 1: build both parallel and concatenated trees
+[retain_multi_copy = True/False] #whether to retain multiple copies of a species in an OG, default is False
+[lcn_method = busco/orthofinder] #method for identifying low copy number OGs
+```
+
+After completing the configuration, run the command: phyloforge -l run.config to construct a low-copy nuclear gene-based phylogenetic tree.
 
 Tips:
 
-1. The workflow for low-copy nuclear genes supports resuming. If you need to add or remove species for continuation, simply add or delete the corresponding files in the in_path directory. If you need to modify the cds file for a specific species and there is already a complete file generated under 03_hmm_out, please delete the corresponding result file for that species in 03_hmm_out before resuming or rename the new cds file.
-2. When seq is selected as codon, some non-standard sequences cannot be converted into codons and will be deleted by default. The actual number of sequences used for tree construction may be less than the number of filtered OGs.
+1. The workflow based on low-copy nuclear genome supports resumption of execution. If you need to add or delete species for resumption of execution, just add or delete the corresponding files in in_path. If you need to modify the cds file of a certain species for resumption of execution, and a corresponding complete file has been generated under 03_hmm_out, please delete the corresponding result file of the species under 03_hmm_out before resuming execution, or rename the new cds file.
+2. When seq is set to codon, some non-standard sequences cannot be converted to codons and will be deleted by default. The actual number of sequences used to construct the tree may be less than the number of OGs screened.
 
-#### 3. Explanation of Result Files
+#### 3. Explanation of result files
 
 ```
-out/
-├── 01_cds_format # Formatted cds files
-├── 02_pep # Corresponding pep files for cds
-├── 03_hmm_out # hmmscan search results
-├── 04_OG # Selected orthologous low/single-copy genes (OGs), when a species has multiple copies in the same OG, the one with the smallest e-value is retained based on the hmmscan result
-├── 05_seq # Sequences corresponding to OGs
-│   ├── 01_cds # cds sequences
-│   └── 02_pep # pep sequences
-├── 06_aln # Sequence alignment results
-│   ├── 01_aln # Sequence alignment results
-│   ├── 02_trim # Sequence trimming results
-│   └── 03_trim_rename # Gene IDs renamed to species names after sequence trimming
-├── 07_tree # Trees
-│   ├── 01_coatree # Coalescent tree
-│   └── 02_contree # Concatenated tree
-└── 08_result # Results, generated results are named in concatenated/coalescent_seq_software.nwk format
+Copy Codeout/
+├── 01_cds_format #formatted cds files
+├── 02_pep #corresponding pep files for cds
+├── 03_hmm_out #hmmscan search results
+├── 04_OG #screened homologous low/copy number gene OGs, when a species has multiple copies in this OG, the one with the smallest e-value is retained based on hmmscan results
+├── 05_seq #sequences corresponding to OGs
+│   ├── 01_cds #cds sequence
+│   └── 02_pep #pep sequence
+├── 06_aln #sequence alignment results
+│   ├── 01_aln #sequence alignment results
+│   ├── 02_trim #sequence trimming results
+│   └── 03_trim_rename #sequence trimming and renaming of gene id to species name
+├── 07_tree #trees
+│   ├── 01_coatree #parallel tree
+│   └── 02_contree #concatenated tree
+└── 08_result #results, named as concatenated/parallel_seq_software.nwk
 ```
 
-**Please note that even if the species coverage is set to a high value, there may still be cases where a certain species is not present in any of the OGs or only appears in a few OGs when the species coverage is not 100%. This can result in the absence of that species in the final tree or inaccurate phylogenetic placement of that species. In such cases, it is recommended to either remove that species or adjust the cover and copy_number parameters to increase the frequency of occurrence for that species as much as possible.**
+**It should be noted that when the species coverage is not 100%, even if the species coverage is set very high, it may still happen that a certain species is not present in all OGs, or the species only appears in a few OGs, which will cause the species to be absent in the final tree, or the phylogenetic position of the species to be inaccurate. In this case, it is recommended to delete the species, or adjust the cover and copy_number parameters to increase the frequency of the species appearing**
 
-### **1.2 Multi-copy gene tree construction mode**
+When the copy_number parameter is set to a value greater than 1, a species may have multiple copies in an OG, and the single-gene mode will retain the gene with the best bidirectional match between the gene and the busco id based on hmmscan results. We have developed a multi-gene mode, which retains all genes with multiple copies in an OG and uses astral-pro (https://github.com/chaoszhang/A-pro) to merge gene trees. This mode can only build parallel trees.
 
-In the single-gene tree construction mode (1.1), when the copy_number parameter is set to a value greater than 1, a species may have multiple copies within a single OG. In the single-gene mode, based on the hmmscan search results, only one gene, which represents the best bidirectional match with the busco id based on the e-value, will be retained. Here, we have developed a multi-gene mode, where all copies of genes with multiple duplications are retained. We use astral-pro (https://github.com/chaoszhang/A-pro) to merge gene trees. This mode can only construct concatenated trees.
+The astral-pro software needs to be configured by the user.
 
-Please note that astral-pro software needs to be configured manually.
+Run `phyloforge -gsc >software.config` to get the software configuration file.
 
-Run "phyloforge -gsc >software.config" to obtain the software configuration file.
-
-software.config：
+software.config:
 
 ```
 [software]
 astral_pro=~/software/A-pro-master/ASTRAL-MP/astral.1.1.6.jar
 ```
 
-Please update the software path to the actual path where you have installed the software. Once configured, run phyloforge -sc software.config to configure the software.
+Change the software path to your own installed actual path, and then run phyloforge -sc software.config to configure the software.
 
-The run.config parameters are the same as in 1.1:
+Tips: In theory, iqtree, fasttree, and raxml can all be used to construct trees, but when using fasttree, the gene tree may not be binary, which may cause problems when merging with astral-pro; therefore, it is not recommended to use fasttree for the multi-gene tree mode.
 
-```
-[lcn_opt_m]
-in_path = ~/run_plant/00_data
-out_path = out_mul_copy
-thread = 10
-orthodb = ~/database/embryophyta_odb10/embryophyta_odb10.hmm
-aln_software = mafft
-tree_software = iqtree
-copy_number = 3
-mode = 0
-cover = 75
-seq = cds
-coa_con = 0
-```
+In addition, if the same batch of data needs both single-copy mode and multi-copy mode, the files under 03_hmm_out can be directly used by both. After one mode is run, it can be copied to the other mode and resumed execution.
 
-After completing the configuration, run the command: phyloforge -m run.config to build a phylogenetic tree based on low-copy nuclear genes. The output results are the same as in 1.1.
+## 2. Building Phylogenetic Trees Based on Organelle (Chloroplast, etc.) Genomic Data
 
-Tips: In theory, iqtree, fasttree, and raxml can all be used for tree construction. However, when using fasttree, non-binary gene trees may occur, which can cause issues with astral-pro merging. Therefore, it is not recommended to use fasttree for tree construction in the multi-gene tree mode.
-
-Additionally, if the same set of data needs to be analyzed using both single-copy and multi-copy modes, the files in 03_hmm_out can be directly shared between the two modes. After running one mode, the results can be copied to the other mode for further analysis.
-
-## 2. Constructing Phylogenetic Trees Based on Organellar (Chloroplast, etc.) Genomic Data
-
-### 2.1 Using Coding Genes
+### 2.1 Based on Coding Genes
 
 #### 1. Required Files
 
-This software requires users to provide the CDS sequences of organellar genes for the species in the species tree, stored in a single directory. It is recommended to name the species CDS files as genus_species.cds (fa/fas/fasta), and the species tree will use genus_species as the species name. Each gene in the fasta file for each species should be named based on the gene name (case-insensitive), or in one of the following three formats obtained from NCBI:
+This software requires users to provide organelle CDS sequences of species for the construction of the species tree. These sequences should be stored in a directory, and it is recommended to name species CDS files as genus_species.cds (fa/fas/fasta). The species name in the final species tree will be represented by genus_species. Each gene ID in the fasta file of each species should be named after the gene name (case-insensitive), or it can be in one of the following three formats obtained from NCBI:
 
 ```
 >psbA
@@ -150,14 +149,14 @@ ATGACTGCAATTTTAGAGAGACGCGAAAGCGAAAGCCTATGGGGTCGCTTCTGTAACTGGATAACTAGCA
 ……
 ```
 
-Tips: Data downloaded from NCBI should include features like [gene=psbA] to identify genes. Otherwise, the gene ID from the fasta file will be used as the gene name.
+Tips: The data downloaded from NCBI should include features like [gene=psbA] to identify the gene. Otherwise, the gene ID in the fasta file will be used as the gene name.
 
 #### 2. Explanation of Running Parameters Configuration
 
 ```
 [organelle_opt]
-in_path = D:\WANG\Species_Tree\cs\  # Directory of CDS files
-out_path = D:\WANG\Species_Tree\out\  # Output result directory
+in_path =  D:\WANG\Species_Tree\cs\  #path to the CDS files
+out_path = D:\WANG\Species_Tree\out\  #output directory
 thread = 10
 cover = 8
 aln_software = mafft
@@ -165,17 +164,17 @@ tree_software = raxml
 seq = codon
 ```
 
-After completing the configuration, run the command: phyloforge -o run.config to build a phylogenetic tree based on organellar coding genes.
+After completing the configuration, run the command: `phyloforge -o run.config` to construct the phylogenetic tree based on organelle coding genes.
 
 #### 3. Explanation of Result Files
 
 ```
-Copy Codeout/
-├── 01_cds_format # Formatted CDS files
-├── 02_pep # Corresponding peptide files for CDS
-├── 03_OG_all # All OGs obtained based on gene names
-├── 04_OG # OGs filtered based on species coverage
-# The following are the same as the results in 1.5
+out/
+├── 01_cds_format #formatted CDS files
+├── 02_pep #corresponding peptide files for CDS
+├── 03_OG_all #all OG obtained based on gene names
+├── 04_OG #OG filtered based on species coverage
+#Same as the results in section 1.5
 ├── 05_seq
 ├── 06_aln
 │   ├── 01_aln
@@ -187,52 +186,52 @@ Copy Codeout/
 └── 08_result
 ```
 
-### 2.2 Using Organellar Whole Genome Sequences
+### 2.2 Based on Organelle Whole Genome Sequences
 
 #### 1. Required Files
 
-This software requires users to provide the whole genome sequences of organellar genes for the species in the species tree. It is recommended to name the whole genome sequence files as genus_species.fa (fas/fasta), and the species tree will use genus_species as the species name.
+This software requires users to provide organelle whole genome sequences of species for the construction of the species tree. It is recommended to name the species whole genome sequence files as genus_species.fa(fas/fasta), and the final result will represent the species name as genus_species.
 
 #### 2. Explanation of Running Parameters Configuration
 
 ```
-Copy Code[whole_genome_opt]
+[whole_genome_opt]
 in_path = whole_genome_data
 out_path = w_out
 thread = 10
-aln_software = mafft/muscle/clustalw # clustalw is slower when dealing with larger sequences, not recommended
+aln_software = mafft/muscle/clustalw #When the sequence is large, clustalw may be slower, so it is not recommended to use it
 tree_software = raxml
 ```
 
-After completing the configuration, run the command: phyloforge -w run.config to build a phylogenetic tree based on organellar whole genome sequences.
+After completing the configuration, run the command: `phyloforge -w run.config` to construct the phylogenetic tree based on organelle whole genome sequences.
 
 #### 3. Explanation of Result Files
 
 ```
 out/
 ├── 01_sequence_format
-│   └── seq.fa
+│   └── seq.fa
 ├── 02_aln
-│   ├── 01_aln
-│   │   └── seq.aln
-│   └── 02_trim
-│       └── seq.trim
+│   ├── 01_aln
+│   │   └── seq.aln
+│   └── 02_trim
+│       └── seq.trim
 ├── 03_tree
-│   ├── RAxML_bestTree.WholeGenome
-│   ├── RAxML_bipartitionsBranchLabels.WholeGenome
-│   ├── RAxML_bipartitions.WholeGenome
-│   ├── RAxML_bootstrap.WholeGenome
-│   └── RAxML_info.WholeGenome
+│   ├── RAxML_bestTree.WholeGenome
+│   ├── RAxML_bipartitionsBranchLabels.WholeGenome
+│   ├── RAxML_bipartitions.WholeGenome
+│   ├── RAxML_bootstrap.WholeGenome
+│   └── RAxML_info.WholeGenome
 └── 04_result
     ├── WholeGenome_RAxML_bipartitionsBranchLabels.nwk
     └── WholeGenome_RAxML_bipartitions.nwk
 ```
 
-## 3. Constructing Phylogenetic Trees Based on SNP Sites
+## 3. Building Phylogenetic Trees Based on SNP Sites
 
 ### 1. Required Files
 
-VCF format SNP site file:
+VCF-formatted SNP site files:
 
 ```
 #CHROM	POS	ID	REF	ALT	QUAL	FILTER	INFO	FORMAT	AS1-1A	AS2-1-1A	AS2-2B	AS2-3A	AS2-4-1A      BPD-1A	BSQT1-1A	Burma-1A	CADW-1A	DBZ1-1A	DHQT1-1A	DLD-1A	DPQT1-1A	DZD1-1A	FHD-1A	FHSX-1A	FY3-1AFZ2-1A	GDD-1A	GDGT1-1A	GXHXX-1A	HNHD-1A	HTD-1A	JPD-1A	LBD-1A	LCDH-1A	LJ43-1A	LK-1A	LSKC-1A	LXZSD-1A      MBD-1A	MDD-1A	ME-A-1A	MLD-1A	NCD-1A	ND-1A	PNX-1A	QGZ-1A	QXQL-1A	RHD1-1A	RHYY-1A	SB1SD-B	SCTXZ-1A	SCZ-1A	SJDY-1SL-1A	SZC-1A	TLH-1A	V-D1-1A	V-Z1-1A	Vietnam1-1A	Vietnam2-1A	WC-1A	WCD-1A	XQC-1A	YWH-1A	ZDYC-1A	ZSLD1-1A      hainan1-1A	hainan2-1A
@@ -245,30 +244,30 @@ Chr1	250	.	C	T	2351.05	PASS	AC=9;AF=0.080;AN=112;BaseQRankSum=0.305;DP=1112;Exce
 ……
 ```
 
-### 2. Explanation of Running Parameters Configuration
+### 2. Running Parameter Configuration Instructions
 
 ```
-Copy Code[snp_opt] # Tree construction based on SNP sites
+[snp_opt] # Construct a tree based on SNP loci
 vcf_file = in.vcf
 out_path = /path/to/output/
-tree_software = treebst/phyml # Tree construction software, choose either treebest or phyml
+tree_software = treebst/phyml/fasttree # Tree construction software, choose between treebest or phyml
 ```
 
-After completing the configuration, run the command: phyloforge -s run.config to build a phylogenetic tree based on SNP sites.
+After configuring, run the command: `phyloforge -s run.config` to construct a phylogenetic tree based on SNP loci.
 
 ### 3. Explanation of Result Files
 
 ```
 out/
-├── in.fa/phy # Fasta or Phylip format file after conversion
+├── in.fa/phy # Fasta or phylip formatted file after conversion
 └── in.phy_phyml_tree.txt # Constructed evolutionary tree
 ```
 
-## 4. Constructing Phylogenetic Trees Based on Structural Variants (SV)
+## 4. Constructing Phylogenetic Tree Based on Structural Variants (SV)
 
 ### 1. Required Files
 
-VCF format file of structural variants (SV) with symbolic notation in the ALT column indicating the specific SV type:
+VCF format file for structural variants (SV), using symbolic notation to indicate specific SV types in the ALT column.
 
 ```
 #CHROM	POS	ID	REF	ALT	QUAL	FILTER	INFO	FORMAT	04K5672	04K5686	04K5702	05W002	05WN230	07KS4	1323  150	177	18-599	238	268	303WX	3411X	384-2	3H-2X	4F1	501	5237	526018	5311	647	7327  7884-4HT	81162	812	832	835B	8902	9642	975-12	9782	A619	B11	B110	B111	B113	B114	B151  B73	B77	BEM	BGY	BK	BS16	BT1	BY4839	BY4944	BY4960	BY804	BY807	BY809	BY813	BY815	BY843 BY855	BZN	C8605	CF3	CHANG3	CHANG7-2	CHENG698	CHUAN48-2	CI7	CIMBL1	CIMBL10	CIMBL100      CIMBL101	CIMBL102	CIMBL104	CIMBL105	CIMBL106	CIMBL107	CIMBL108	CIMBL11	CIMBL110      CIMBL111	CIMBL112	CIMBL113	CIMBL114	CIMBL115	CIMBL116	CIMBL117	CIMBL118	CIMBL119	CIMBL120	CIMBL121	CIMBL122	CIMBL123	CIMBL124	CIMBL125	CIMBL126	CIMBL127	CIMBL128	CIMBL129	CIMBL13	CIMBL130	CIMBL131	CIMBL132	CIMBL133	CIMBL134      CIMBL135	CIMBL136	CIMBL137	CIMBL138	CIMBL139	CIMBL14	CIMBL140	CIMBL141	CIMBL142      CIMBL143	CIMBL144	CIMBL145	CIMBL146	CIMBL147	CIMBL148	CIMBL149	CIMBL15	CIMBL150      CIMBL151	CIMBL152	CIMBL153	CIMBL154	CIMBL155	CIMBL156	CIMBL157	CIMBL16	CIMBL17	CIMBL1CIMBL19	CIMBL2	CIMBL20	CIMBL21	CIMBL22	CIMBL23	CIMBL25	CIMBL26	CIMBL27	CIMBL28	CIMBL3	CIMBL30	CIMBL31	CIMBL32	CIMBL33	CIMBL3CIMBL35	CIMBL36	CIMBL37	CIMBL38	CIMBL39X	CIMBL4	CIMBL40	CIMBL41	CIMBL42	CIMBL43	CIMBL44	CIMBL45X	CIMBL46	CIMBL4CIMBL48	CIMBL49	CIMBL5	CIMBL50	CIMBL51	CIMBL52	CIMBL53	CIMBL54	CIMBL56	CIMBL57	CIMBL58-M	CIMBL59	CIMBL6	CIMBL60	CIMBL61X	CIMBL62	CIMBL63	CIMBL65	CIMBL66	CIMBL67	CIMBL68	CIMBL69	CIMBL7	CIMBL70	CIMBL71	CIMBL72	CIMBL73X	CIMBL74	CIMBL7CIMBL76	CIMBL77	CIMBL78	CIMBL79	CIMBL8	CIMBL80X	CIMBL81	CIMBL82	CIMBL83	CIMBL84	CIMBL85X	CIMBL86	CIMBL87X      CIMBL88	CIMBL89	CIMBL9	CIMBL90	CIMBL91	CIMBL92	CIMBL93	CIMBL94	CIMBL95	CIMBL96	CIMBL97	CIMBL98	CIMBL99	CML113	CML114	CML115-M	CML115X	CML118	CML121	CML122	CML130	CML134	CML139	CML162	CML163	CML165	CML168	CML169-M	CML170	CML171CML172	CML189	CML191	CML192	CML20	CML223	CML225	CML226	CML228	CML229	CML27	CML28	CML282	CML285	CML286X	CML287CML289	CML29	CML290	CML298	CML300	CML305	CML307	CML31	CML32	CML323	CML324	CML325	CML326X	CML327	CML338	CML360CML361	CML364	CML40	CML408-M	CML411	CML415	CML422	CML423	CML426	CML428	CML431	CML432	CML451	CML454	CML465CML468	CML470	CML471	CML479	CML480	CML486-M	CML493	CML496	CML497	CML50	CML51-M	CML69	CY72	D047	D863F DAN3130	DAN340	DAN360	DAN4245	DAN598	DAN599	DAN9046	DE.EX	DH29	DH3732	DONG237	DONG46	DSB	E28	EN25	ES40  FCD0602	GEMS1	GEMS10	GEMS11	GEMS12-M	GEMS13	GEMS14	GEMS15	GEMS16	GEMS17	GEMS18	GEMS19	GEMS2	GEMS20	GEMS21GEMS23	GEMS24	GEMS25	GEMS27	GEMS28	GEMS29	GEMS3	GEMS30	GEMS31	GEMS32	GEMS33	GEMS35	GEMS36	GEMS37	GEMS39	GEMS4 GEMS40	GEMS41	GEMS42	GEMS43	GEMS44	GEMS45	GEMS46	GEMS47	GEMS48	GEMS49	GEMS5	GEMS50	GEMS51	GEMS52	GEMS53	GEMS54GEMS55	GEMS56	GEMS57	GEMS58	GEMS59	GEMS6	GEMS60	GEMS61	GEMS62	GEMS63	GEMS64	GEMS65	GEMS66	GEMS9	GY1032	GY220 GY237	GY386	GY386B	GY462	GY798	GY923	H21	HB	HSBN	HTH-17	HUA83-2	HUANGC	HYS	HZS	IRF291	IRF314JH59	JH96C	JI53	JI63	JI842	JI846	JI853	JIAO51	JING24	JING724	JY01	K10	K12	K22	L3180	LG001 LIAO138	LIAO159	LIAO5114	LIAO5262	LIAO5263	LK11	LV28	LXN	LY	LY042	M153	M165	M97   MN	MO17	NAN21-3	NMJT	P138	P178	P6WC	PH4VC	Q1261X	QI205	QI319	R08	R15	R15X1141	RY684 RY697	RY713	RY729	RY732	RY737	S22-M	S22X	S37	SC55	SHEN137	SHEN5003	SI273	SI434	SI446	SK    SW1611	SW92E114	SY1032	SY1035	SY1039	SY1052	SY1077	SY3073	SY998	SY999	TIAN77	TIE7922	TT16	TX5	TY1   TY10	TY11	TY2	TY3	TY4	TY5	TY6	TY7	TY8	TY9	U8112	W138	WH413	WMR	WU109	XI502 XUN971	XZ698	YAN414	YE478	YE488	YE515	YE52106	YE8001	YU374	YU87-1	Z2018F	ZAC546-M	ZB648	ZH68	ZHENG2ZHENG28	ZHENG29	ZHENG30	ZHENG32	ZHENG35	ZHENG58	ZHENG653	ZHI41	ZHONG69	ZI330	ZONG3	ZONG31	ZZ01	ZZ03
@@ -279,7 +278,7 @@ VCF format file of structural variants (SV) with symbolic notation in the ALT co
 ……
 ```
 
-or BND notation, indicated in the INFO column as SVTYPE=BND:
+Or BND notation: BND notation refers to marking SVTYPE=BND in the INFO column.
 
 ```
 #CHROM	POS	ID	REF	ALT	QUAL	FILTER	INFO	FORMAT	HG00731	HG00732	HG00512	HG00513	NA19238	NA19239	NA24385	HG03125	NA12878	HG03486	HG02818	HG03065	HG03683	HG02011	HG03371	NA12329	HG00171	NA18939	HG03732	HG00096	NA20847	HG03009	NA20509	HG00864	HG01505	NA18534	NA19650	HG02587	HG01596	HG01114	NA19983	HG02492
@@ -290,19 +289,19 @@ chr1	90258	.	A	AGTCCCTCTGTCTCTGCCAACCAGTTAACCTGCTGCTTCCTGGAGGAAGACAGTCCCTCT	.	.
 ……
 ```
 
-Both types of VCF files are acceptable, but it is required that they both have information in the INFO column marked with "SVTYPE=".
+Both types of VCF files are acceptable, but it is required that both contain the "SVTYPE=" information in the INFO column.
 
-### 2. Explanation of Running Parameters Configuration
+### 2. Running Parameter Configuration Instructions
 
 ```
-Copy Code[sv_opt] # Tree construction based on SNP sites
+[sv_opt] # Construct a tree based on SNP loci
 vcf_file = AMP_SV.vcf
 out_path = SV_out
-tree_software = iqtree # Tree construction software, only iqtree
+tree_software = iqtree # Tree construction software, only iqtree is allowed
 thread = 10 # Number of threads
 ```
 
-After completing the configuration, run the command: phyloforge -S run.config to build a phylogenetic tree based on genomic structural variations.
+After configuring, run the command: `phyloforge -S run.config` to construct a phylogenetic tree based on genomic structural variants.
 
 ### 3. Explanation of Result Files
 
@@ -313,26 +312,25 @@ SV_out/
 ├── SV.contree
 ├── SV.iqtree
 ├── SV.log
-├── SV.matrix # Matrix derived from VCF format SV data, in fasta format
+├── SV.matrix # Matrix converted from VCF format SV data, in fasta format
 ├── SV.mldist
 ├── SV.model.gz
 ├── SV.parstree
 ├── SV.splits.nex
-└── SV.treefile # ML tree constructed by iqtree
-
-Other files are intermediate files generated during iqtree execution.
+└── SV.treefile # Maximum likelihood tree constructed by iqtree
+# Other files are intermediate files generated by IQTree
 ```
 
-## 5. Multi-Process sequence Trees
+## 5. Multi-process Gene Tree
 
 ### 1. Required Files
 
-fasta format CDS sequence files, one file will generate one tree, store all files in one directory
+Fasta formatted CDS sequence files, one file will generate one tree. Store all files in one directory.
 
-### 4. Explanation of Running Parameters Configuration
+### 4. Running Parameter Configuration Instructions
 
 ```
-Copy Code[gene_opt]
+[gene_opt]
 in_path = path/to/cds_dir
 out_path = gene_test
 aln_software = clustalw/mafft/muscle
@@ -341,12 +339,12 @@ tree_software = fasttree/iqtree/raxml/treebest/
 thread = 10
 ```
 
-After completing the configuration, run the command: phyloforge -g run.config to build a phylogenetic tree based on organellar-encoded genes.
+After configuring, run the command: `phyloforge -g run.config` to construct a phylogenetic tree based on organellar-encoded genes.
 
 ### 5. Explanation of Result Files
 
 ```
-Copy Codegene_test/
+gene_test/
 ├── 01_cds
 ├── 02_pep
 ├── 03_ID

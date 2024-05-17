@@ -5,7 +5,7 @@ import multiprocessing
 from Bio import SeqIO
 from Bio import BiopythonWarning
 import warnings
-
+import datetime
 warnings.simplefilter('ignore', BiopythonWarning)
 
 from treetool import script
@@ -67,4 +67,6 @@ class GeneTree(RunCmd):
         shutil.move(f'{self.out_path}/06_aln', f'{self.out_path}/05_aln')
         shutil.move(f'{self.out_path}/07_tree/01_coatree', f'{self.out_path}/06_tree')
         shutil.rmtree(f'{self.out_path}/07_tree')
+        current_time = datetime.datetime.now()
+        print(f"[{current_time.strftime('%Y-%m-%d %H:%M:%S')}] Finish constructing trees.")
 

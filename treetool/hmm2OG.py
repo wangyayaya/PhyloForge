@@ -27,12 +27,12 @@ class HMM_OG(RunCmd):
         os.mkdir(f'{self.og_out_path}')
 
         try:
-            cover = int(self.cover)
+            self.cover = int(self.cover)
         except AttributeError:
             self.cover = len(self.get_file_paths())
 
         try:
-            copy_number = int(self.copy_number)
+            self.copy_number = int(self.copy_number)
         except AttributeError:
             self.copy_number = 1
 
@@ -203,11 +203,12 @@ class HMM_OG(RunCmd):
             print(f"[{current_time.strftime('%Y-%m-%d %H:%M:%S')}] A total of {file_count} OGs were filtered out.")
         return result
 
-    def ortho2OG(self, retain_multcopy):
-        or_path = f'{self.out_path}/03_orthofinder'
+    def ortho2OG(self, retain_mult_copy):
+        or_path = f'{self.out_path}/03_orthofinder/OrthoFinder'
         for item in os.listdir(or_path):
             if os.path.isdir(os.path.join(or_path, item)) and item.startswith('Results_'):
-                or_result_dir = item
+                or_result_dir = f'{or_path}/{item}'
+                # print(or_result_dir)
 
         with open(f"{or_result_dir}/Orthogroups/Orthogroups.tsv") as f:
             next(f)
@@ -234,7 +235,7 @@ class HMM_OG(RunCmd):
                                 if gene[0] == '':
                                     pass
                                 else:
-                                    if retain_multcopy:
+                                    if retain_mult_copy:
                                         for id in gene:
                                             print(id.strip(), file=fw)
                                     else:
